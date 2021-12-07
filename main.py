@@ -108,32 +108,38 @@ def prompt_for_choices():
         for member in MainChoices:
             if member.value[1].upper() == choice[0].upper():
                 validated_choice = member.value[1]
-                break;
+                break
         if validated_choice == '':
             print(f'\nValue, \'{choice}\' is not a valid choice')
             print("Please Choose again\n")
     return validated_choice
 
 
-def make_bars(text=""):
-    bars = ""
-    str_len = HEADER_LENGTH if text == "" else int((HEADER_LENGTH - len(text)) / 2)
+def build_header_string(text=""):
 
-    for i in range(0, str_len):
-        bars += BAR_CHAR
-    if str_len % 2 == 0:
-        bars.rstrip(bars[-1])
-    return bars
+    bar = ""
+    bar_len = HEADER_LENGTH if text == "" else int((HEADER_LENGTH - len(text)) / 2)
+
+    for i in range(0, bar_len):
+        bar += BAR_CHAR
+
+    header = f'{bar} {text} {bar}' if text != "" else bar
+    header_len = len(header)
+    if header_len != HEADER_LENGTH:
+        while len(header) > HEADER_LENGTH:
+            header = header.rstrip(header[-1])
+        while len(header) < HEADER_LENGTH:
+            header += BAR_CHAR
+
+    return header
 
 
 def print_header():
-    welcome_bars = make_bars(WELCOME_TEXT)
-    info_bars = make_bars(INFO_TEXT)
-    print(make_bars())
-    print(f'{welcome_bars} {WELCOME_TEXT} {welcome_bars}')
-    print(make_bars())
-    print(f'{info_bars} {INFO_TEXT} {info_bars}')
-    print(make_bars())
+    print(build_header_string())
+    print(build_header_string(text=WELCOME_TEXT))
+    print(build_header_string())
+    print(build_header_string(text=INFO_TEXT))
+    print(build_header_string())
 
 
 def run_reservation_system_pos():
