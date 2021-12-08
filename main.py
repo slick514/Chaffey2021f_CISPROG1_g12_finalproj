@@ -38,8 +38,11 @@ def print_header():
 
 
 def run_reservation_system_pos():
+    model = mainmenu.Model()
     print_header()
-    mainmenu.Controller()
+    controller: mainmenu.Controller = mainmenu.MainController()
+    while True:
+        controller = controller.do(model)
 
 if __name__ == '__main__':
     print("start")

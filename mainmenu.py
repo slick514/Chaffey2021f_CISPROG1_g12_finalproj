@@ -95,6 +95,7 @@ class View(metaclass=abc.ABCMeta):
     '''
     An abstract/interface class that will enforce method implementation on child classes
     '''
+
     @abc.abstractmethod
     def do_view(self, text=""):
         '''
@@ -120,6 +121,21 @@ class View(metaclass=abc.ABCMeta):
         :return: nothing
         '''
         pass
+
+
+class Controller(metaclass=abc.ABCMeta):
+
+    def __init__(self):
+        self.model: Model() = None
+
+    @abc.abstractmethod
+    def do(self, model):
+        '''
+        :param model: The model to use for this controller
+        :return: the next controller that needs to be used
+        '''
+        self.model = model
+
 
 class MainView(View):
     choices = [
@@ -152,27 +168,153 @@ class MainView(View):
 
 
 class NewReservationView(View):
-    pass
+
+    def do_view(self, text=""):
+        # TODO:
+        pass
+
+    def validate(self, text=""):
+        # TODO:
+        pass
+
+    def print_reprompt(self, invalid_input=""):
+        # TODO:
+        pass
 
 
 class ChangeReservationView(View):
-    pass
+
+    def do_view(self, text=""):
+        # TODO:
+        pass
+
+    def validate(self, text=""):
+        # TODO:
+        pass
+
+    def print_reprompt(self, invalid_input=""):
+        # TODO:
+        pass
 
 
 class PrintReservationsView(View):
-    pass
+
+    def do_view(self, text=""):
+        # TODO:
+        pass
+
+    def validate(self, text=""):
+        # TODO:
+        pass
+
+    def print_reprompt(self, invalid_input=""):
+        # TODO:
+        pass
 
 
 class Model:
+    def __init__(self):
+        # this will be an array of arrays in the form rows[seats[]]
+        self.__reservations = []
+
+    def add_reservation(self, row, seat, customer_name):
+        self.__reservations[row[seat]] = customer_name
+        pass
+
+    def delete_reservation(self, row, seat):
+        del self.__reservations[row[seat]]
+        pass
+
+class BookingView(View):
+
+    def do_view(self, text=""):
+        # TODO:
+        pass
+
+    def validate(self, text=""):
+        # TODO:
+        pass
+
+    def print_reprompt(self, invalid_input=""):
+        # TODO:
+        pass
+
+
+class BookingChangeController(Controller):
     # default constructor
     def __init__(self):
-        # this will be a map of maps in the form {row_number: {seat_number: passenger_name}}
-        self.reservations = {}
+        super().__init__()
+        self.view: View = BookingView()
+
+    def do(self, model):
+        super().do(model)
+        print("doing booking change")
+        return MainController()
+        #TODO:
 
 
-class Controller:
+class PrintView:
 
-    def begin(self):
+    def do_view(self, text=""):
+        # TODO:
+        pass
+
+    def validate(self, text=""):
+        # TODO:
+        pass
+
+    def print_reprompt(self, invalid_input=""):
+        # TODO:
+        pass
+
+
+class PrintController(Controller):
+    # default constructor
+    def __init__(self):
+        super().__init__()
+        self.view: View = PrintView()
+
+    def do(self, model):
+        super().do(model)
+        print("doing print")
+        return MainController()
+        # TODO:
+
+
+class NewBookingView(View):
+
+    def do_view(self, text=""):
+        # TODO:
+        pass
+
+    def validate(self, text=""):
+        # TODO:
+        pass
+
+    def print_reprompt(self, invalid_input=""):
+        # TODO:
+        pass
+
+
+class NewBookingController(Controller):
+    def __init__(self):
+        super().__init__()
+        self.view: View = NewBookingView()
+
+    def do(self, model):
+        super().do(model)
+        print("doing new booking")
+        return MainController()
+        # TODO:
+
+
+class MainController(Controller):
+
+    def __init__(self):
+        super().__init__()
+        self.view: View = MainView()
+
+    def do(self, model):
         while True:
             response = self.view.do_view().upper()[0]
             valid = self.view.validate(response)
@@ -181,12 +323,14 @@ class Controller:
                 continue
             if response == CHOICE_QUIT:
                 quit()
+            elif response == CHOICE_CHANGE_BOOKING:
+                return BookingChangeController()
+            elif response == CHOICE_PRINT_BOOKINGS:
+                return PrintController()
+            elif response == CHOICE_NEW_BOOKING:
+                return NewBookingController()
 
-    # default constructor
-    def __init__(self):
-        self.model = Model()
-        self.view: View = MainView()
-        self.begin()
+
 
 
 '''
