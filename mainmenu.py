@@ -126,7 +126,7 @@ class View(metaclass=abc.ABCMeta):
 class Controller(metaclass=abc.ABCMeta):
 
     def __init__(self):
-        self.model: Model() = None
+        self.__model: Model() = None
 
     @abc.abstractmethod
     def do(self, model):
@@ -134,7 +134,34 @@ class Controller(metaclass=abc.ABCMeta):
         :param model: The model to use for this controller
         :return: the next controller that needs to be used
         '''
-        self.model = model
+        self.__model = model
+
+    def get_model(self):
+        return self.__model
+
+
+class Model:
+    def __init__(self):
+        # this will be an array of arrays in the form rows[seats[]]
+        self.__reservations = []
+
+    def add_reservation(self, row, seat, customer_name):
+        self.__reservations[row[seat]] = customer_name
+        pass
+
+    def delete_reservation(self, row, seat):
+        del self.__reservations[row[seat]]
+        pass
+
+    def get_row(self, row):
+        return self.__reservations[row]
+
+    def get_passenger(self, row, seat):
+        return self.__reservations[row[seat]]
+
+    def print(self):
+        # TODO:
+        print("printing table")
 
 
 class MainView(View):
@@ -197,34 +224,6 @@ class ChangeReservationView(View):
         pass
 
 
-class PrintReservationsView(View):
-
-    def do_view(self, text=""):
-        # TODO:
-        pass
-
-    def validate(self, text=""):
-        # TODO:
-        pass
-
-    def print_reprompt(self, invalid_input=""):
-        # TODO:
-        pass
-
-
-class Model:
-    def __init__(self):
-        # this will be an array of arrays in the form rows[seats[]]
-        self.__reservations = []
-
-    def add_reservation(self, row, seat, customer_name):
-        self.__reservations[row[seat]] = customer_name
-        pass
-
-    def delete_reservation(self, row, seat):
-        del self.__reservations[row[seat]]
-        pass
-
 class BookingView(View):
 
     def do_view(self, text=""):
@@ -250,35 +249,18 @@ class BookingChangeController(Controller):
         super().do(model)
         print("doing booking change")
         return MainController()
-        #TODO:
-
-
-class PrintView:
-
-    def do_view(self, text=""):
         # TODO:
-        pass
-
-    def validate(self, text=""):
-        # TODO:
-        pass
-
-    def print_reprompt(self, invalid_input=""):
-        # TODO:
-        pass
 
 
 class PrintController(Controller):
     # default constructor
     def __init__(self):
         super().__init__()
-        self.view: View = PrintView()
 
     def do(self, model):
         super().do(model)
-        print("doing print")
+        super().get_model().print()
         return MainController()
-        # TODO:
 
 
 class NewBookingView(View):
@@ -329,8 +311,6 @@ class MainController(Controller):
                 return PrintController()
             elif response == CHOICE_NEW_BOOKING:
                 return NewBookingController()
-
-
 
 
 '''
