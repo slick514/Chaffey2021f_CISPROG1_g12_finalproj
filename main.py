@@ -4,8 +4,8 @@ Refer to guidance for table and text formatting
     Print Header
     Instantiate a MainMenu instance to handle main menu functionality
 '''
-
-import mainmenu
+import bookingdata
+#import mainmenu
 BAR_CHAR = "="
 WELCOME_TEXT = "Hello! Welcome to Chaffey Airlines!"
 INFO_TEXT = "Our Cool Project v1.0, by Justin Gries & Christian Flores"
@@ -38,11 +38,12 @@ def print_header():
 
 
 def run_reservation_system_pos():
-    model = mainmenu.Model()
-    print_header()
-    controller: mainmenu.Controller = mainmenu.MainController()
-    while True:
-        controller = controller.do(model)
+    pass
+    # model = mainmenu.Model()
+    # print_header()
+    # controller: mainmenu.Controller = mainmenu.MainController()
+    # while True:
+    #     controller = controller.do(model)
 
 if __name__ == '__main__':
     print("start")

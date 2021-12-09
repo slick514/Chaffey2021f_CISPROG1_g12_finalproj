@@ -1,7 +1,6 @@
 import abc
 import os
-
-import mainmenu
+import bookingdata
 
 NEWLINE = os.linesep
 '''
@@ -100,7 +99,6 @@ HEADER_WIDTH = 4 * OUTER_CELL_WIDTH
 
 
 def build_header_string(width, text=""):
-
     bar = ""
     bar_len = width if text == "" else int((width - len(text)) / 2)
 
@@ -121,7 +119,7 @@ def print_cell(name=OPEN_SEAT_NAME):
     gap = MAX_NAME_DISPLAY_LEN - len(name)
     data_str = ""
     if gap < 0:
-        data_str = slice(data_str, 0, MAX_NAME_DISPLAY_LEN)
+        data_str = data_str[0: MAX_NAME_DISPLAY_LEN:]
     else:
         data_str = f'{CELL_SPACING}{name}{CELL_SPACING}'
     flipflop = True
@@ -190,6 +188,7 @@ class Controller(metaclass=abc.ABCMeta):
     def get_model(self):
         return self.__model
 
+
 class Model:
     def __init__(self):
         # this will be an array of arrays in the form rows[seats[]]
@@ -208,19 +207,19 @@ class Model:
                 reservation_data[COACH_STR][row][seat] = OPEN_SEAT_NAME
         return reservation_data
 
-    def add_reservation(self, type, row, seat, customer_name):
-        self.__reservations[type][row][seat] = customer_name
+    def add_reservation(self, seating_class, row, seat, customer_name):
+        self.__reservations[seating_class][row][seat] = customer_name
         pass
 
-    def delete_reservation(self, type, row, seat):
-        self.__reservations[type][row][seat] = OPEN_SEAT_NAME
+    def delete_reservation(self, seating_class, row, seat):
+        self.__reservations[seating_class][row][seat] = OPEN_SEAT_NAME
         pass
 
-    def get_row(self, type, row):
-        return self.__reservations[type][row]
+    def get_row(self, seating_class, row):
+        return self.__reservations[seating_class][row]
 
-    def get_passenger(self, type, row, seat) -> str:
-        return self.__reservations[type][row][seat]
+    def get_passenger(self, seating_class, row, seat) -> str:
+        return self.__reservations[seating_class][row][seat]
 
     def print_grid(self):
         print(f'{build_header_string(HEADER_WIDTH, PRINT_HEADER_TEXT)}')
@@ -236,10 +235,9 @@ class Model:
             for seat in rows[row].keys():
                 print_cell(self.__reservations[type][row][seat])
             print()
-        pass
 
 
-class MainView(View):
+class MainMenuView(View):
     choices = [
         [CHOICE_NEW_BOOKING, "(N)ew Reservation"],
         [CHOICE_CHANGE_BOOKING, "(C)hange Reservation"],
@@ -261,7 +259,7 @@ class MainView(View):
 
     def validate(self, text="") -> bool:
         text = text.upper()
-        result = text in MainView.keys
+        result = text in MainMenuView.keys
         return result
 
     def print_reprompt(self, invalid_input=""):
@@ -269,7 +267,7 @@ class MainView(View):
         print(f'Please try again.{NEWLINE}')
 
 
-class NewReservationView(View):
+class RowPriomptView(View):
 
     def do_view(self, text="") -> str:
         # TODO:
@@ -284,7 +282,7 @@ class NewReservationView(View):
         pass
 
 
-class ChangeReservationView(View):
+class NamePromptView(View):
 
     def do_view(self, text="") -> str:
         # TODO:
@@ -299,7 +297,7 @@ class ChangeReservationView(View):
         pass
 
 
-class RowView(View):
+class ColPromptView(View):
 
     def do_view(self, text="") -> str:
         # TODO:
@@ -314,62 +312,65 @@ class RowView(View):
         pass
 
 
-class NameView(View):
-
-    def do_view(self, text="") -> str:
-        # TODO:
-        pass
-
-    def validate(self, text="") -> bool:
-        # TODO:
-        pass
-
-    def print_reprompt(self, invalid_input=""):
-        # TODO:
-        pass
-
-
-class ColView(View):
-
-    def do_view(self, text="") -> str:
-        # TODO:
-        pass
-
-    def validate(self, text="") -> bool:
-        # TODO:
-        pass
-
-    def print_reprompt(self, invalid_input=""):
-        # TODO:
-        pass
+def get_from_user(view, func) -> bool:
+    while True:
+        response = view.do_view()
+        valid = view.validate(response)
+        if not valid:
+            view.print_reprompt(response)
+            continue
+        elif response[0].upper() == CHOICE_RETURN:
+            return False
+        else:
+            func(response)
+            return True
 
 
-class BookingView(View):
-
-    def do_view(self, text="") -> str:
-        # TODO:
-        pass
-
-    def validate(self, text="") -> bool:
-        # TODO:
-        pass
-
-    def print_reprompt(self, invalid_input=""):
-        # TODO:
-        pass
-
-
-class BookingChangeController(Controller):
-    # default constructor
+class ChangeBookingController(Controller):
     def __init__(self):
         super().__init__()
-        self.view: View = BookingView()
+        self.old_row = -1
+        self.new_row = -1
+        self.old_col = -1
+        self.new_col = -1
+        self.flight_class = COACH_STR
+
+    def set_old_row(self, row):
+        self.old_row = row
+
+    def set_old_col(self, col):
+        self.old_col = col
+
+    def set_new_row(self, row):
+        self.new_row = row
+
+    def set_new_col(self, col):
+        self.new_col = col
+
+    def set_old_flight_class(self, flight_class):
+        self.old_flight_class = flight_class
+
+    def set_new_flight_class(self, flight_class):
+        self.new_flight_class = flight_class
 
     def do(self, model):
         super().do(model)
-        print("doing booking change")
+        if not (self.get_flight_class_from_user(), self.get_old_row_from_user()
+                and self.get_old_col_from_user()):
+            return MainController()
+        passenger = super().get_model().get_passenger(self.flight_class, self.old_row, self.old_col)
+        super().get_model().add_reservation(self.old_row, self.new_row)
         return MainController()
-        # TODO:
+
+    def get_old_row_from_user(self) -> bool:
+        view: View = RowPriomptView()
+        func = lambda val: self.set_old_row(val)
+        return get_from_user(view, func)
+
+    def get_old_col_from_user(self) -> bool:
+        view: View = ColPromptView()
+        func = lambda val: self.set_old_col(val)
+        return get_from_user(view, func)
 
 
 class PrintController(Controller):
@@ -401,33 +402,6 @@ class NewBookingController(Controller):
 
     def do(self, model):
         super().do(model)
-
-        col_view: View = ColView()
-        name_view: View = NameView()
-
-        while True:
-            response = col_view.do_view()
-            valid = col_view.validate(response)
-            if not valid:
-                col_view.print_reprompt(response)
-                continue
-            elif response[0].upper() == CHOICE_RETURN:
-                return MainController()
-            else:
-                self.col = int(response)
-                break
-        while True:
-            response = name_view.do_view()
-            valid = name_view.validate(response)
-            if not valid:
-                name_view.print_reprompt(response)
-                continue
-            elif response[0].upper() == CHOICE_RETURN:
-                return MainController()
-            else:
-                self.set_name(response)
-                break
-
         if not (self.get_row_from_user()
                 and self.get_col_from_user()
                 and self.get_name_from_user()):
@@ -435,32 +409,20 @@ class NewBookingController(Controller):
         super().get_model().add_reservation(self.row, self.col, self.name)
         return MainController()
 
-    def get_from_user(self, view, func) -> bool:
-        while True:
-            response = view.do_view()
-            valid = view.validate(response)
-            if not valid:
-                view.print_reprompt(response)
-                continue
-            elif response[0].upper() == CHOICE_RETURN:
-                return False
-            else:
-                func(response)
-                return True
     def get_row_from_user(self) -> bool:
-        view: View = RowView()
+        view: View = RowPriomptView()
         func = lambda val: self.set_row(val)
-        return self.get_from_user(view, func)
+        return get_from_user(view, func)
 
     def get_col_from_user(self) -> bool:
-        view: View = ColView()
+        view: View = ColPromptView()
         func = lambda val: self.set_col(val)
-        return self.get_from_user(view, func)
+        return get_from_user(view, func)
 
     def get_name_from_user(self) -> bool:
-        view: View = NameView()
+        view: View = NamePromptView()
         func = lambda val: self.set_name(val)
-        return self.get_from_user(view, func)
+        return get_from_user(view, func)
 
 
 class MainController(Controller):
@@ -469,7 +431,7 @@ class MainController(Controller):
         super().__init__()
 
     def do(self, model):
-        view: View = MainView()
+        view: View = MainMenuView()
         while True:
             response = ''
             while True:
@@ -482,7 +444,7 @@ class MainController(Controller):
             if response == CHOICE_QUIT:
                 quit()
             elif response == CHOICE_CHANGE_BOOKING:
-                return BookingChangeController()
+                return ChangeBookingController()
             elif response == CHOICE_PRINT_BOOKINGS:
                 return PrintController()
             elif response == CHOICE_NEW_BOOKING:
