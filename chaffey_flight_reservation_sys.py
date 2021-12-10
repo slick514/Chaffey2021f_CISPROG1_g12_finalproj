@@ -760,7 +760,8 @@ class ChangeBookingController(Controller):
             handle_money_transfer(to_seat=to_seat, from_seat=from_seat)
             move_passenger(from_seat=from_seat, model=model, to_seat=to_seat)
             print(f'Passenger "{to_seat.get_passenger().get_name()}" '
-                  f'moved from {from_seat.get_row_seat_str()} to {to_seat.get_row_seat_str()} ',end=EMPTY_STR)
+                  f'moved from {from_seat.get_row_seat_str()} to {to_seat.get_row_seat_str()} ', end=EMPTY_STR)
+
             if diff == 0:
                 print(f' at no charge."')
             else:
