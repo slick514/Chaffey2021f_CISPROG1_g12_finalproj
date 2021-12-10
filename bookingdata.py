@@ -183,22 +183,14 @@ class Seat:
     def __get_passenger(self) -> Passenger:
         return self.__passenger
 
-    def __str__(self) -> str:
-        return "I am seat"
-        # passenger = self.__get_passenger()
-        # name: str = passenger.get_name() if (passenger is not None) else EMPTY_STR
-        # gap: int = MAX_NAME_DISPLAY_LEN - len(name)
-        # data_str = EMPTY_STR
-        # if gap < 0:
-        #     data_str = data_str[0: MAX_NAME_DISPLAY_LEN:]
-        # else:
-        #     data_str = f'{SPACE}{name}{SPACE}'
-        # flip_flop: bool = True
-        # while len(data_str) < INNER_CELL_WIDTH:
-        #     data_str = data_str.join(SPACE) if flip_flop else SPACE.join(data_str)
-        #     flip_flop = not flip_flop
-        # return f'{CELL_SEPARATOR}{data_str}{CELL_SEPARATOR}'
-    # TODO
+    def generate_seat_display(self) -> str:
+        passenger = self.__get_passenger()
+        name: str = passenger.get_name() if (passenger is not None) else "-OPEN-"
+        gap: float = (MAX_NAME_DISPLAY_LEN - len(name)) / 2
+        front_gap: int = max(1, math.floor(gap))
+        back_gap: int = max(1, math.ceil(gap))
+        data_str = f'{front_gap * SPACE}{name}{back_gap * SPACE}'
+        return f'{CELL_SEPARATOR} {data_str} {CELL_SEPARATOR}'
 
 
 class SeatingStructure:
@@ -275,82 +267,63 @@ class SeatingStructure:
     def get_seat_options(self, tier: Tier) -> list:
         return self.__seating_options[tier]
 
-    def __get_solid_header_bar(self) -> str:
-        return self.__header_width * BAR
-
-    def __get_tier_header(self, tier: Tier) -> str:
-        if tier not in self.__tier_headers.keys():
-            self.__generate_tier_header(tier)
-        return self.__tier_headers[tier]
-
-    def __build_grid_section(self, tier: Tier):
-        builder: StringIO = StringIO()
-        builder.write(self.__get_tier_header(tier))
-        rows = self.__get_structure()[tier]
-        for row in rows.keys():
-            for seat_letter in rows[row].keys():
-                builder.write(seat_letter)
-            builder.write(NEWLINE)
-        return builder.getvalue()
-
     def __generate_printout(self) -> str:
         builder: StringIO = StringIO()
-        builder.write(f'{self.generate_top_bar_header()}{NEWLINE}')
+        builder.write(f'{self.__generate_top_bar_header()}{NEWLINE}')
         builder.write(f'{self.__generate_tier_display(Tier.first_class)}{NEWLINE}')
         builder.write(f'{self.__generate_tier_display(Tier.coach)}{NEWLINE}')
         builder.write(self.__generate_bottom_line())
         return builder.getvalue()
 
-    def generate_top_bar_header(self) -> str:
+    def __generate_top_bar_header(self) -> str:
         return self.__generate_bar_header(width=self.__header_width,
                                           text=self.TOP_HEADER_TEXT,
-                                          outer_buffer_width=self.__side_marker_len)
+                                          front_buffer_width=self.__side_marker_len)
 
     @classmethod
-    def __generate_bar_header(cls, width: int, text: str = EMPTY_STR, outer_buffer_width: int = 0) -> str:
+    def __generate_bar_header(cls,
+                              width: int,
+                              text: str = EMPTY_STR,
+                              rear_buffer_width: int = 0,
+                              front_buffer_width: int = 0) -> str:
         if text != EMPTY_STR:
             text = f'{SPACE}{text}{SPACE}'
         if len(text) > width:
             raise Exception(f"Cannot fit the text '{text}' within a header of length {width}")
-        side_width: float = (width - 2 * outer_buffer_width - len(text)) / 2
+        side_width: float = (width - len(text)) / 2
         first_bar_width: int = math.floor(side_width)
         last_bar_width: int = math.ceil(side_width)
         first_bar: str = first_bar_width * BAR
         last_bar: str = last_bar_width * BAR
-        end_buffer: str = SPACE * outer_buffer_width
-        return f'{end_buffer}{first_bar}{text}{last_bar}{end_buffer}'
+        return f'{SPACE * front_buffer_width}{first_bar}{text}{last_bar}{SPACE * rear_buffer_width}'
 
     def __generate_tier_header(self, tier: Tier) -> str:
-        return self.__generate_bar_header(width=self.__subheader_width, text=tier.get_tier_name().upper())
-
-    def __generate_seat_header(self, tier: Tier) -> str:
-        # TODO:
-        pass
-
-    def __initialize_structures(self) -> str:
-        # todo:
-        pass
+        width: int = len(self.__get_seat_options(tier)) * OUTER_CELL_WIDTH
+        return self.__generate_bar_header(width=width, text=tier.get_tier_name().upper())
 
     def __get_structure(self) -> dict:
         return self.__structure
 
     def __generate_tier_display(self, tier: Tier) -> str:
         builder: StringIO = StringIO()
+
         builder.write(f'{self.__generate_row_marker()}{self.__generate_tier_header(tier)}{NEWLINE}')
         row_options: list = self.__get_row_options(tier=tier)
         seat_options: list = self.__get_seat_options(tier=tier)
+        builder.write(f'{self.__generate_seat_headers(options=self.__get_seat_options(tier=tier))}{NEWLINE}')
         for row_number in row_options:
             builder.write(self.__generate_row_marker(row_number))
             for seat_letter in seat_options:
                 seat: Seat = self.get_seat(tier=tier,
                                            row_number=row_number,
                                            seat_letter=seat_letter)
-                builder.write(str(seat))
-            builder.write(NEWLINE)
+                builder.write(seat.generate_seat_display())
+            if row_number != row_options[-1]:
+                builder.write(NEWLINE)
         return builder.getvalue()
 
     def __generate_row_marker(self, row_number: int = UNSET_INT) -> str:
-        marker_len: int  = self.__side_marker_len
+        marker_len: int = self.__side_marker_len
         number_len: int = len(str(row_number))
         diff: int = marker_len if row_number == UNSET_INT else marker_len - number_len
         if diff < 0:
@@ -362,7 +335,7 @@ class SeatingStructure:
 
     def __generate_bottom_line(self) -> str:
         return self.__generate_bar_header(width=self.__header_width,
-                                          outer_buffer_width=self.__side_marker_len)
+                                          front_buffer_width=self.__side_marker_len)
 
     def __populate_section(self, tier: Tier):
         structure: dict = self.__get_structure()
@@ -374,6 +347,16 @@ class SeatingStructure:
             for seat_letter in self.__get_seat_options(tier):
                 seat: Seat = Seat(row_number=row_number, seat_letter=seat_letter, tier=tier)
                 new_row[seat_letter] = seat
+
+    def __generate_seat_headers(self, options: list) -> str:
+        builder: StringIO = StringIO()
+        builder.write(self.__generate_row_marker())
+
+        for item in options:
+            builder.write(CELL_SEPARATOR)
+            builder.write(self.__generate_bar_header(width=INNER_CELL_WIDTH, text=item))
+            builder.write(CELL_SEPARATOR)
+        return builder.getvalue()
 
 
 s: SeatingStructure = SeatingStructure(fc_rows=NUM_FC_ROWS,
