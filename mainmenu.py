@@ -19,29 +19,29 @@ NEWLINE = os.linesep
         Print main menu options
         Sanitize user input
         Option: Make a reservation
-            # TODO: Option to make a new first class or coach reservation
-            #     NOTE: Only 8 seats are available in first class
-            #     NOTE: Only 40 seats are available in coach
-            #     TODO: If the reservation attendant picks first class or coach reservation,
-            #         TODO: Prompt attendant for the location of the desired seat
-            #             TODO: Prompt for row
-            #             TODO: Prompt for seat
-            #             TODO: If not available, it will be refused
-            #                 TODO: Re-prompt for seat and start process again.
-            #         TODO: Prompt attendant for the name of the person taking the flight.
-            #             TODO: If seat is available:
-            #                 TODO: Prompt attendant for sales-tax
-            #                 TODO: Calculate cost of the ticket
-            #                     TODO: Add base ticket price - discounts + sales tax
-            #                 TODO: Prompt user for amount given
-            #                 TODO: If user provides amount equal or greater than cost:
-            #                     TODO: User is assigned a ticket
-            #                     TODO: Change is provided, if needed.
-            #                         TODO: Determine optimal change
-            #                         TODO: Print change
-            #                 TODO: If user provides insufficient amount:
-            #                     TODO: Transaction is cancelled
-            #                     TODO: fall back to options menu
+            TODO: Option to make a new first class or coach reservation
+                NOTE: Only 8 seats are available in first class
+                NOTE: Only 40 seats are available in coach
+                TODO: If the reservation attendant picks first class or coach reservation,
+                    TODO: Prompt attendant for the location of the desired seat
+                        TODO: Prompt for row
+                        TODO: Prompt for seat
+                        TODO: If not available, it will be refused
+                            TODO: Re-prompt for seat and start process again.
+                    TODO: Prompt attendant for the name of the person taking the flight.
+                        TODO: If seat is available:
+                            TODO: Prompt attendant for sales-tax
+                            TODO: Calculate cost of the ticket
+                                TODO: Add base ticket price - discounts + sales tax
+                            TODO: Prompt user for amount given
+                            TODO: If user provides amount equal or greater than cost:
+                                TODO: User is assigned a ticket
+                                TODO: Change is provided, if needed.
+                                    TODO: Determine optimal change
+                                    TODO: Print change
+                            TODO: If user provides insufficient amount:
+                                TODO: Transaction is cancelled
+                                TODO: fall back to options menu
         Option: change an existing reservation
             NOTE: Ensure data is not corrupted, by waiting for both seats before changing anything
             TODO: Prompt for the seat to change:

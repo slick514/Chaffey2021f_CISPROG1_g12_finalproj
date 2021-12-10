@@ -17,6 +17,12 @@ BAR_CHAR: str = '='
 QUIT_CHAR: str = 'Q'
 RETURN_TO_MAIN_CHAR: str = 'R'
 
+DISCOUNT_LOW_AGE: int = 6
+DISCOUNT_HIGH_AGE: int = 65
+AGE_DISCOUNT: float = 0.2
+MIN_AGE = 0
+MAX_AGE = 130
+
 SYSTEM_LOCALE = EMPTY_STR
 setlocale(LC_ALL, SYSTEM_LOCALE)
 
@@ -27,7 +33,8 @@ NUM_COACH_ROWS: int = 10
 NUM_FC_ROWS: int = 4
 NUM_COACH_SEATS_PER_ROW: int = 4
 NUM_FC_SEATS_PER_ROW: int = 2
-
+QUIT_GUIDANCE_TEXT: str = f"Enter '{QUIT_CHAR}' at any point to quit out of the application"
+RETURN_GUIDANCE_TEXT: str = f"Enter '{RETURN_TO_MAIN_CHAR}' at any point to Return to the main menu"
 
 def build_app_header_string(text=""):
     bar = ""
@@ -51,8 +58,6 @@ def print_app_header():
     print(build_app_header_string(text=WELCOME_TEXT))
     print(build_app_header_string())
     print(build_app_header_string(text=INFO_TEXT))
-    print(build_app_header_string(text=f"Enter '{QUIT_CHAR}' at any point to quit out of the application"))
-    print(build_app_header_string(text=f"Enter '{RETURN_TO_MAIN_CHAR}' at any point to Return to the main menu"))
     print(build_app_header_string())
 
 
@@ -65,6 +70,7 @@ def run_reservation_system_pos():
     controller: Controller = MainController()
     while controller is not None:
         controller = controller.do(model)
+
 
 class MoneyManipulator(Enum):
     thousands = 100000
@@ -124,11 +130,6 @@ class MoneyManipulator(Enum):
 
 
 class Passenger:
-    DISCOUNT_LOW_AGE: int = 6
-    DISCOUNT_HIGH_AGE: int = 65
-    AGE_DISCOUNT: float = 0.2
-    MIN_AGE = 0
-    MAX_AGE = 130
 
     def __init__(self, name: str, age: int):
 
@@ -166,14 +167,14 @@ class Passenger:
         self.__validate_age(age)
         self.__age = age
 
-    @classmethod
-    def __validate_age(cls, age):
-        if age < cls.MIN_AGE or age > cls.MAX_AGE:
-            raise Exception(f"Age, '{age}' is out of bounds ({cls.MIN_AGE} to {cls.MAX_AGE})")
+    @staticmethod
+    def __validate_age(age):
+        if age < MIN_AGE or age > MAX_AGE:
+            raise Exception(f"Age, '{age}' is out of bounds ({MIN_AGE} to {MAX_AGE})")
 
     def get_discount_rate(self) -> float:
         age: int = self.get_age()
-        return 0.0 if age in range(Passenger.DISCOUNT_LOW_AGE, Passenger.DISCOUNT_HIGH_AGE) else 0.2
+        return 0.0 if age in range(DISCOUNT_LOW_AGE, DISCOUNT_HIGH_AGE) else 0.2
 
     def __eq__(self, other) -> bool:
         return (type(self) == type(other)
@@ -506,11 +507,12 @@ class QuitController(Controller):
 
 def prompt_user_for_tier() -> Tier:
     while True:
-        print(f"{linesep}What tier would you like?")
+        print(f"\t{linesep}What tier would you like?{linesep}\t:")
         for tier in Tier:
             print(f"\t{tier.get_menu_display_text()}")
-        text = input(":")
+        text = input()
         try:
+            check_for_quit_or_return(text)
             tier = Tier.get_tier(text)
             print(f"You chose '{tier.get_tier_name()}'{linesep}")
             return tier
@@ -530,44 +532,167 @@ class QuitApplication(Exception):
     pass
 
 
+def prompt_user_for_row_number(tier: Tier, model: SeatingStructure, change_booking: bool) -> int:
+    while True:
+        if change_booking:
+            model.print_occupied_rows(tier)
+        else:
+            model.print_available_rows(tier)
+        print(f"\tPlease select a row number{linesep}\t: ", end=EMPTY_STR)
+        row_str: str = input()
+        try:
+            check_for_quit_or_return(row_str)
+            row: int = int(row_str)
+            if change_booking:
+                if row in model.get_empty_rows(tier):
+                    raise Exception(f"No seats have been booked yet for row {row} in {tier.get_tier_name()} ")
+            else:
+                if row in model.get_full_rows(tier):
+                    raise Exception(f"Row {row} in {tier.get_tier_name()} is full for this flight.")
+            print(f"Row {row} in {tier.get_tier_name()} has been selected{linesep}")
+            return row
+        except ValueError:
+            print(f'Entry "{row_str}" could not be evaluated as an integer.')
+        except QuitApplication:
+            raise QuitApplication
+        except ReturnToMainMenu:
+            raise ReturnToMainMenu
+        except Exception as e:
+            print(e)
+
+
+def check_for_quit_or_return(row_str):
+    if row_str.upper() == QUIT_CHAR:
+        raise QuitApplication
+    if row_str.upper() == RETURN_TO_MAIN_CHAR:
+        raise ReturnToMainMenu
+
+
+def prompt_user_for_seat_letter(tier, row_number, model, change_booking) -> str:
+    while True:
+        if change_booking:
+            model.print_occupied_seats(tier=tier, row_number=row_number)
+        else:
+            model.print_available_seats(tier=tier, row_number=row_number)
+        print(f"\tPlease select a seat letter{linesep}\t: ", end=EMPTY_STR)
+        seat_str: str = input().upper()
+        try:
+            check_for_quit_or_return(seat_str)
+            if seat_str == EMPTY_STR:
+                raise Exception("No entry detected")
+            if seat_str in model.get_seat_options(tier=tier, row_number=row_number):
+                raise_invalid_option_exception(seat_str)
+            if change_booking:
+                if not model.is_seat_booked(tier=tier, row_number=row_number, seat_letter=seat_letter):
+                    raise Exception(
+                        f"{tier.get_tier_name()} seat '{row_number}-{seat_str}' does not have a passenger assigned to it.")
+            else:
+                if model.is_seat_booked(tier=tier, row_number=row_number, seat_letter=seat_letter):
+                    raise Exception(
+                        f"{tier.get_tier_name()} seat '{row_number}-{seat_str}' is not available.")
+            print(f"You chose seat-letter '{seat_str}'")
+            return seat_str
+        except QuitApplication:
+            raise QuitApplication
+        except ReturnToMainMenu:
+            raise ReturnToMainMenu
+        except Exception as e:
+            print(e)
+
+
+def prompt_user_for_passenger_name() -> str:
+    while True:
+        print(f"\tWhat is the passenger's name?{linesep}\t:", end=EMPTY_STR)
+        try:
+            name_str: str = input()
+            check_for_quit_or_return(name_str)
+            rtn_name: str = EMPTY_STR
+            words: list = name_str.split()
+            if len(words) == 0:
+                raise Exception("No name supplied.")
+            for word in words:
+                word = word.capitalize()
+                if not word.isalpha():
+                    raise Exception(f'"{word}" contains invalid characters.')
+                rtn_name += f"{word} "
+            rtn_name = rtn_name.rstrip(rtn_name[-1])
+            return rtn_name
+        except QuitApplication:
+            raise QuitApplication
+        except ReturnToMainMenu:
+            raise ReturnToMainMenu
+        except Exception as e:
+            print(e)
+
+
+
+def print_exiting_guidance():
+    print(f"\t{QUIT_GUIDANCE_TEXT}")
+    print(f"\t{RETURN_GUIDANCE_TEXT}{linesep}")
+
+
+def prompt_user_for_passenger_age() -> int:
+    while True:
+        print(f"\tWhat is the passenger's age? ({MIN_AGE} to {MAX_AGE}){linesep}\t:", end=EMPTY_STR)
+        age_str: str = input()
+        try:
+            check_for_quit_or_return(age_str)
+            age: int = int(age_str)
+            if age < MIN_AGE or age > MAX_AGE:
+                raise Exception(f"Age '{age} is not within valid bounds ({MIN_AGE} to {MAX_AGE})")
+            return age
+        except ValueError:
+            print(f'Entry "{age_str}" could not be evaluated as an integer.')
+        except QuitApplication:
+            raise QuitApplication
+        except ReturnToMainMenu:
+            raise ReturnToMainMenu
+        except Exception as e:
+            print(e)
+
+
+def obtain_passenger_from_attendant() -> Passenger:
+    name: str = prompt_user_for_passenger_name()
+    age: int = prompt_user_for_passenger_age()
+    passenger: Passenger = Passenger(name=name, age=age)
+    print(f'Passenger "{passenger}" (age {age}) has been created{linesep}')
+    return passenger
+
+
+def obtain_seat_from_attendant(model: SeatingStructure, change_booking: bool) -> Seat:
+    tier: Tier = prompt_user_for_tier()
+    row_number = prompt_user_for_row_number(tier=tier, model=model, change_booking=change_booking)
+    seat_letter = prompt_user_for_seat_letter(tier=tier, row_number=row_number, model=model,
+                                              change_booking=change_booking)
+    seat: Seat = Seat(tier=tier, row_number=row_number, seat_letter=seat_letter)
+    print(f"{tier.get_tier_name()} seat {row_number}-{seat_letter} has been selected{linesep}")
+    return seat
+
+
+def prompt_user_for_tax_rate()->float:
+    #todo:
+    pass
+
+
+def handle_money_transfer(seat):
+    # todo:
+    pass
+
+
 class NewBookingController(Controller):
 
     def do(self, model: SeatingStructure) -> Controller:
-        print("Creating a new booking:")
+        print("\tCreate A New Booking:")
+        print_exiting_guidance()
         try:
-            tier: Tier = prompt_user_for_tier()
-            row_number = prompt_user_for_row_number(tier=tier, change_booking=False)
-            seat_letter = prompt_user_for_seat_letter(tier=tier, row_number=row_number, change_booking=False)
-            seat: Seat = Seat(tier=tier, row_number=row_number, seat_letter=seat_letter)
-            name: str = prompt_user_for_passenger_name()
-            age: int = prompt_user_for_passenger_age()
-            passenger: Passenger = Passenger(name=name, age=age)
+            seat = obtain_seat_from_attendant(model=model, change_booking=False)
+            passenger = obtain_passenger_from_attendant()
             seat.assign_passenger(passenger)
             tax_rate: float = prompt_user_for_tax_rate()
             passenger.set_tax_rate(tax_rate)
             handle_money_transfer(seat)
             model.set_seat(seat)
-
-            # TODO: Option to make a new first class or coach reservation
-            #     TODO: If the reservation attendant picks first class or coach reservation,
-            #         TODO: Prompt attendant for the location of the desired seat
-
-            #             TODO: If not available, it will be refused
-            #                 TODO: Re-prompt for seat and start process again.
-            #         TODO: Prompt attendant for the name of the person taking the flight.
-            #         TODO: Prompt attendant for age of person taking the flight
-            #         TODO: Prompt attendant for sales-tax
-            #                 TODO: Calculate cost of the ticket
-            #                     TODO: Add base ticket price - discounts + sales tax
-            #                 TODO: Prompt user for amount given
-            #                 TODO: If user provides amount equal or greater than cost:
-            #                     TODO: User is assigned a ticket
-            #                     TODO: Change is provided, if needed.
-            #                         TODO: Determine optimal change
-            #                         TODO: Print change
-            #                 TODO: If user provides insufficient amount:
-            #                     TODO: Transaction is cancelled
-            #                     TODO: fall back to options menu
+            print(f"Booked: {seat.get_seat_description()}{linesep}")
         except ReturnToMainMenu:
             pass
         except QuitApplication:
@@ -577,15 +702,20 @@ class NewBookingController(Controller):
 
 class ChangeBookingController(Controller):
     def do(self, model: SeatingStructure) -> Controller:
-        print("Changing Bookings:")
+        print("\tChanging Bookings:")
+        print_exiting_guidance()
         return MainController()
 
 
 class PrintBookingController(Controller):
     def do(self, model: SeatingStructure) -> Controller:
-        print("Printing the bookings diagram:")
+        print("\tBookings Chart:")
         print(f"{linesep}{model}{linesep}")
         return MainController()
+
+
+def raise_invalid_option_exception(text):
+    raise Exception(f"Entry '{text}' is not a valid option")
 
 
 class MainMenuChoices(Enum):
@@ -604,7 +734,7 @@ class MainMenuChoices(Enum):
             for member in cls:
                 if text == member.value[1]:
                     return member
-        raise Exception(f"Entry '{text}' does not match up with any menu-options")
+        raise_invalid_option_exception(text)
 
     def get_menu_text(self):
         return self.value[0]
@@ -621,16 +751,122 @@ class MainController(Controller):
 
     @staticmethod
     def prompt_for_choice() -> Controller:
-        choice: type()
+        choice: MainMenuChoices
         while True:
+            print(f"\tOptions:")
+            for member in MainMenuChoices:
+                print(f"\t{member.get_menu_text()}")
+            text: str = input("\t: ")
             try:
-                print(f"\tOptions:")
-                for member in MainMenuChoices:
-                    print(f"\t{member.get_menu_text()}")
-                text: str = input(": ")
                 choice = MainMenuChoices.get_by_letter(text=text)
-                break
+                return choice.get_controller()
             except Exception as e:
                 print(e)
-                print("Please try again.")
-        return choice.get_controller()
+
+
+
+'''
+    Rules:
+    First-Class basefare is $500
+    Coach base fare is $199
+    If passenger is under 7 or 65+, 20% discount
+    No refunds
+    
+    Establish an "exit/return" option so that the attendant can back out of a menu if they need to
+    Establish a "quit" option so that the attendant can quit at any point.
+    Design Interface:
+        Print welcome & info messages
+        Prompt for (Receive/Validate) main menu options
+            * Make New Booking
+            * Change Existing Booking
+            * Print Booking Chart
+            * Quit
+            
+            If "Make New Booking":
+                Generate Seat
+                    Prompt (Receive/Validate) for reservation tier (first class or coach)
+                    Prompt (Receive/Validate) for row-number
+                        Display available rows in tier
+                        Check row exists in tier
+                        Check if bookings are available in that row and tier
+                    Prompt (Receive/Validate) for seat-letter
+                        Display available seats in tier/row
+                        Check seat exists/available in tier/row-number/seat-letter
+                    Create Seat with tier, row-number, and seat-letter provided
+                
+                Generate Passenger:
+                    Prompt (Receive/Validate) for the name of the person taking the flight.
+                        Verify that this is comprised of alphabetical characters
+                        Prompt (Receive/Validate) attendant for age of person taking the flight
+                            Age range limited to realistic values
+                        Create Passenger with name and age
+                
+                Assign Passenger to Seat (not added to data structure yet)
+                Handle payment
+                    Get cost of ticket for seat
+                        Calculate using base ticket price, age-discount, & sales tax
+                    Prompt user for amount paid
+                    If user provides insufficient amount:
+                        Prompt for more money
+                    Once user provides amount equal or greater than cost:
+                        User is assigned a ticket
+                        Any change is provided:
+                            Determine optimal change
+                            Print out denominations returned
+                            
+                Assign Seat to Flight
+                
+                User can exit from any options by entering designated return char ('R')
+                User can exit from any options by entering designated return char ('Q')
+            
+            If "Change Existing Booking"
+                Find Existing Seat/Booking
+                    Prompt (Receive/Validate) for reservation tier (first class or coach)
+                    Prompt (Receive/Validate) for row-number
+                        Display rows where bookings exist
+                        Check row exists in tier
+                        Check if any reservations exist in that tier
+                    Prompt (Receive/Validate) for seat-letter
+                        Display seats in where bookings exist
+                        Check seat exists in tier and row
+                        Check if seat is presently booked
+                    Create/Find Seat with tier, row-number, and seat-letter provided
+                
+                Find new seat
+                    Prompt (Receive/Validate) for reservation tier (first class or coach)
+                    Prompt (Receive/Validate) for row-number
+                        Display free rows for tier
+                        Check row exists in tier
+                        Check if any open seats exist in that tier
+                    Prompt (Receive/Validate) for seat-letter
+                        Display free seats in tier/row
+                        Check seat exists in tier and row
+                        Check if seat is currently booked
+                
+                If upgrading from coach to first-class
+                    Handle payment
+                        Get cost for change of ticket
+                        Prompt user for amount paid
+                        If user provides insufficient amount:
+                            Prompt for more money
+                        Once user provides amount equal or greater than cost:
+                            Any change is provided:
+                                Determine optimal change
+                                Print out denominations returned
+                
+                Assign passenger to new seat
+                Remove passenger from old seat
+                
+                User can exit from any options by entering designated return char ('R')
+                User can exit from any options by entering designated return char ('Q')
+                
+            If "Print Booking Chart"
+                Display all the bookings in a readable chart (See guidance document)
+                    If the person’s name is longer than 12 characters:
+                        Only display the first 12 name-characters
+                If all seats are taken:
+                    Display a message is displayed stating that no new reservations can be made
+            
+            If "Quit":
+                Quit
+'''
