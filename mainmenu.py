@@ -19,29 +19,29 @@ NEWLINE = os.linesep
         Print main menu options
         Sanitize user input
         Option: Make a reservation
-            TODO: Option to make a new first class or coach reservation
-                NOTE: Only 8 seats are available in first class
-                NOTE: Only 40 seats are available in coach
-                TODO: If the reservation attendant picks first class or coach reservation,
-                    TODO: Prompt attendant for the location of the desired seat
-                        TODO: Prompt for row
-                        TODO: Prompt for seat
-                        TODO: If not available, it will be refused
-                            TODO: Re-prompt for seat and start process again.
-                    TODO: Prompt attendant for the name of the person taking the flight.
-                        TODO: If seat is available:
-                            TODO: Prompt attendant for sales-tax
-                            TODO: Calculate cost of the ticket
-                                TODO: Add base ticket price - discounts + sales tax
-                            TODO: Prompt user for amount given
-                            TODO: If user provides amount equal or greater than cost:
-                                TODO: User is assigned a ticket
-                                TODO: Change is provided, if needed.
-                                    TODO: Determine optimal change
-                                    TODO: Print change
-                            TODO: If user provides insufficient amount:
-                                TODO: Transaction is cancelled
-                                TODO: fall back to options menu
+            # TODO: Option to make a new first class or coach reservation
+            #     NOTE: Only 8 seats are available in first class
+            #     NOTE: Only 40 seats are available in coach
+            #     TODO: If the reservation attendant picks first class or coach reservation,
+            #         TODO: Prompt attendant for the location of the desired seat
+            #             TODO: Prompt for row
+            #             TODO: Prompt for seat
+            #             TODO: If not available, it will be refused
+            #                 TODO: Re-prompt for seat and start process again.
+            #         TODO: Prompt attendant for the name of the person taking the flight.
+            #             TODO: If seat is available:
+            #                 TODO: Prompt attendant for sales-tax
+            #                 TODO: Calculate cost of the ticket
+            #                     TODO: Add base ticket price - discounts + sales tax
+            #                 TODO: Prompt user for amount given
+            #                 TODO: If user provides amount equal or greater than cost:
+            #                     TODO: User is assigned a ticket
+            #                     TODO: Change is provided, if needed.
+            #                         TODO: Determine optimal change
+            #                         TODO: Print change
+            #                 TODO: If user provides insufficient amount:
+            #                     TODO: Transaction is cancelled
+            #                     TODO: fall back to options menu
         Option: change an existing reservation
             NOTE: Ensure data is not corrupted, by waiting for both seats before changing anything
             TODO: Prompt for the seat to change:
@@ -97,79 +97,6 @@ OUTER_CELL_WIDTH = INNER_CELL_WIDTH + 2 * len(CELL_SEPARATOR)
 SUBHEADER_WIDTH = 2 * OUTER_CELL_WIDTH
 HEADER_WIDTH = 4 * OUTER_CELL_WIDTH
 
-
-def build_header_string(width, text=""):
-    bar = ""
-    bar_len = width if text == "" else int((width - len(text)) / 2)
-
-    for i in range(0, bar_len):
-        bar += BAR_CHAR
-
-    header = f'{bar} {text} {bar}' if text != "" else bar
-    header_len = len(header)
-    if header_len != width:
-        while len(header) > width:
-            header = header.rstrip(header[-1])
-        while len(header) < width:
-            header += BAR_CHAR
-    return header
-
-
-def print_cell(name=OPEN_SEAT_NAME):
-    gap = MAX_NAME_DISPLAY_LEN - len(name)
-    data_str = ""
-    if gap < 0:
-        data_str = data_str[0: MAX_NAME_DISPLAY_LEN:]
-    else:
-        data_str = f'{CELL_SPACING}{name}{CELL_SPACING}'
-    flipflop = True
-    while len(data_str) < INNER_CELL_WIDTH:
-        data_str = data_str + " " if flipflop else " " + data_str
-        flipflop = not flipflop
-    print(f'{CELL_SEPARATOR}{data_str}{CELL_SEPARATOR}', end="")
-
-
-def generate_keys(choices):
-    '''
-    :param choices: a list of lists is expected
-    :return: will return a list comprised of the first items in each list contained in choices
-    '''
-    keys = []
-    for choice in choices:
-        keys += choice[0]
-    return keys
-
-
-class View(metaclass=abc.ABCMeta):
-    '''
-    An abstract/interface class that will enforce method implementation on child classes
-    '''
-
-    @abc.abstractmethod
-    def do_view(self, text="") -> str:
-        '''
-        Display a view to the user
-        :param text: The text to display, if it is provided
-        :return: the user's input in response to the view
-        '''
-        pass
-
-    @abc.abstractmethod
-    def validate(self, text="") -> bool:
-        '''
-        :param text: The text to be validated
-        :return: whether or not the text is valid for the expected view
-        '''
-        pass
-
-    @abc.abstractmethod
-    def print_reprompt(self, invalid_input=""):
-        '''
-        Prompts the user for new input
-        :param invalid_input:
-        :return: nothing
-        '''
-        pass
 
 
 class Controller(metaclass=abc.ABCMeta):
@@ -237,7 +164,7 @@ class Model:
             print()
 
 
-class MainMenuView(View):
+class MainMenuView():
     choices = [
         [CHOICE_NEW_BOOKING, "(N)ew Reservation"],
         [CHOICE_CHANGE_BOOKING, "(C)hange Reservation"],
