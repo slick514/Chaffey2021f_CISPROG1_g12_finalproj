@@ -36,7 +36,8 @@ NUM_FC_SEATS_PER_ROW: int = 2
 QUIT_GUIDANCE_TEXT: str = f"Enter '{QUIT_CHAR}' at any point to quit out of the application"
 RETURN_GUIDANCE_TEXT: str = f"Enter '{RETURN_TO_MAIN_CHAR}' at any point to Return to the main menu"
 
-def build_app_header_string(text=""):
+
+def build_app_header_string(text="") -> str:
     bar = ""
     bar_len = WELCOME_HEADER_LENGTH if text == "" else int((WELCOME_HEADER_LENGTH - len(text)) / 2)
 
@@ -291,11 +292,11 @@ class Seat:
         if passenger == self.NO_PASSENGER:
             raise Exception("No Passenger supplied or found for price comparison")
 
-    def compare_cost_cents(self, seat: 'Seat') -> int:
-        self.__validate_seat_move_possible(seat)
-        new_seat_copy = seat.copy()
-        new_seat_cost = new_seat_copy.get_price_cents(self.__get_passenger())
-        return max(0, new_seat_cost - self.get_price_cents())
+    def compare_cost_cents(self, to_seat: 'Seat') -> int:
+        self.__validate_seat_move_possible(to_seat)
+        to_seat = to_seat.copy()
+        to_seat_cost: int = to_seat.get_price_cents(self.__get_passenger())
+        return max(0, to_seat_cost - self.get_price_cents())
 
     def __validate_seat_move_possible(self, seat):
         if seat.is_taken():
@@ -324,6 +325,18 @@ class Seat:
         back_gap: int = ceil(gap)
         data_str = f"{front_gap * SPACE}{name}{back_gap * SPACE}"
         return f"{CELL_SEPARATOR} {data_str} {CELL_SEPARATOR}"
+
+    def get_seat_description(self) -> str:
+        # Todo:
+        pass
+
+    def get_passenger(self) -> Passenger:
+        # Todo:
+        pass
+
+    def get_row_seat_str(self) -> str:
+        # TODO:
+        pass
 
 
 class SeatingStructure:
@@ -488,6 +501,34 @@ class SeatingStructure:
             builder.write(CELL_SEPARATOR)
         return builder.getvalue()
 
+    def print_occupied_rows(self, tier: Tier):
+        # TODO:
+        pass
+
+    def print_available_rows(self, tier: Tier):
+        # TODO:
+        pass
+
+    def get_empty_rows(self, tier: Tier):
+        # Todo:
+        pass
+
+    def get_full_rows(self, tier: Tier):
+        # Todo:
+        pass
+
+    def print_occupied_seats(self, tier: Tier, row_number: int):
+        # Todo:
+        pass
+
+    def print_available_seats(self, tier: Tier, row_number: int):
+        # Todo:
+        pass
+
+    def is_seat_booked(self, tier: Tier, row_number: int, seat_letter: str):
+        # Todo:
+        pass
+
 
 class Controller(metaclass=ABCMeta):
 
@@ -507,10 +548,10 @@ class QuitController(Controller):
 
 def prompt_user_for_tier() -> Tier:
     while True:
-        print(f"\t{linesep}What tier would you like?{linesep}\t:")
+        print(f"\tWhat tier would you like?")
         for tier in Tier:
             print(f"\t{tier.get_menu_display_text()}")
-        text = input()
+        text = input("\t:")
         try:
             check_for_quit_or_return(text)
             tier = Tier.get_tier(text)
@@ -568,7 +609,7 @@ def check_for_quit_or_return(row_str):
         raise ReturnToMainMenu
 
 
-def prompt_user_for_seat_letter(tier, row_number, model, change_booking) -> str:
+def prompt_user_for_seat_letter(tier: Tier, row_number: int, model: SeatingStructure, change_booking: bool) -> str:
     while True:
         if change_booking:
             model.print_occupied_seats(tier=tier, row_number=row_number)
@@ -580,14 +621,15 @@ def prompt_user_for_seat_letter(tier, row_number, model, change_booking) -> str:
             check_for_quit_or_return(seat_str)
             if seat_str == EMPTY_STR:
                 raise Exception("No entry detected")
-            if seat_str in model.get_seat_options(tier=tier, row_number=row_number):
+            if seat_str in model.get_seat_options(tier=tier):
                 raise_invalid_option_exception(seat_str)
             if change_booking:
-                if not model.is_seat_booked(tier=tier, row_number=row_number, seat_letter=seat_letter):
+                if not model.is_seat_booked(tier=tier, row_number=row_number, seat_letter=seat_str):
                     raise Exception(
-                        f"{tier.get_tier_name()} seat '{row_number}-{seat_str}' does not have a passenger assigned to it.")
+                        f"{tier.get_tier_name()} seat '{row_number}-{seat_str}' does not have a passenger assigned to "
+                        f"it.")
             else:
-                if model.is_seat_booked(tier=tier, row_number=row_number, seat_letter=seat_letter):
+                if model.is_seat_booked(tier=tier, row_number=row_number, seat_letter=seat_str):
                     raise Exception(
                         f"{tier.get_tier_name()} seat '{row_number}-{seat_str}' is not available.")
             print(f"You chose seat-letter '{seat_str}'")
@@ -623,7 +665,6 @@ def prompt_user_for_passenger_name() -> str:
             raise ReturnToMainMenu
         except Exception as e:
             print(e)
-
 
 
 def print_exiting_guidance():
@@ -669,24 +710,24 @@ def obtain_seat_from_attendant(model: SeatingStructure, change_booking: bool) ->
     return seat
 
 
-def prompt_user_for_tax_rate()->float:
-    #todo:
+def prompt_user_for_tax_rate() -> float:
+    # Todo:
     pass
 
 
-def handle_money_transfer(seat):
-    # todo:
+def handle_money_transfer(to_seat: Seat, from_seat: Seat = None):
+    # Todo:
     pass
 
 
 class NewBookingController(Controller):
 
     def do(self, model: SeatingStructure) -> Controller:
-        print("\tCreate A New Booking:")
+        print("Create A New Booking:")
         print_exiting_guidance()
         try:
-            seat = obtain_seat_from_attendant(model=model, change_booking=False)
-            passenger = obtain_passenger_from_attendant()
+            seat: Seat = obtain_seat_from_attendant(model=model, change_booking=False)
+            passenger: Passenger = obtain_passenger_from_attendant()
             seat.assign_passenger(passenger)
             tax_rate: float = prompt_user_for_tax_rate()
             passenger.set_tax_rate(tax_rate)
@@ -700,10 +741,34 @@ class NewBookingController(Controller):
         return MainController()
 
 
+def move_passenger(to_seat: Seat, from_seat: Seat, model: SeatingStructure):
+    to_seat.assign_passenger(from_seat.get_passenger())
+    from_seat.remove_passenger()
+    model.set_seat(to_seat)
+    model.set_seat(from_seat)
+
+
 class ChangeBookingController(Controller):
+
     def do(self, model: SeatingStructure) -> Controller:
-        print("\tChanging Bookings:")
+        print("Change An Existing Booking:")
         print_exiting_guidance()
+        try:
+            from_seat: Seat = obtain_seat_from_attendant(model=model, change_booking=True)
+            to_seat: Seat = obtain_seat_from_attendant(model=model, change_booking=False)
+            diff: int = from_seat.compare_cost_cents(to_seat=to_seat)
+            handle_money_transfer(to_seat=to_seat, from_seat=from_seat)
+            move_passenger(from_seat=from_seat, model=model, to_seat=to_seat)
+            print(f'Passenger "{to_seat.get_passenger().get_name()}" '
+                  f'moved from {from_seat.get_row_seat_str()} to {to_seat.get_row_seat_str()} ',end=EMPTY_STR)
+            if diff == 0:
+                print(f' at no charge."')
+            else:
+                print(f" for an additional cost of {MoneyManipulator.convert_cents_to_dollar_str(diff)}")
+        except ReturnToMainMenu:
+            pass
+        except QuitApplication:
+            return QuitController()
         return MainController()
 
 
@@ -714,7 +779,7 @@ class PrintBookingController(Controller):
         return MainController()
 
 
-def raise_invalid_option_exception(text):
+def raise_invalid_option_exception(text: str):
     raise Exception(f"Entry '{text}' is not a valid option")
 
 
@@ -762,7 +827,6 @@ class MainController(Controller):
                 return choice.get_controller()
             except Exception as e:
                 print(e)
-
 
 
 '''
