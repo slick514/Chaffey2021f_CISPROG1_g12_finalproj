@@ -4,12 +4,16 @@ Refer to guidance for table and text formatting
     Print Header
     Instantiate a MainMenu instance to handle main menu functionality
 '''
-import bookingdata
+from bookingdata import Passenger, Seat, SeatingStructure, ChangeMaker, Tier
 #import mainmenu
 BAR_CHAR = "="
 WELCOME_TEXT = "Hello! Welcome to Chaffey Airlines!"
 INFO_TEXT = "Our Cool Project v1.0, by Justin Gries & Christian Flores"
 HEADER_LENGTH = 80
+NUM_COACH_ROWS: int = 10
+NUM_FC_ROWS: int = 4
+NUM_COACH_SEATS_PER_ROW: int = 4
+NUM_FC_SEATS_PER_ROW: int = 2
 
 def build_header_string(text=""):
 
@@ -39,9 +43,10 @@ def print_header():
 
 def run_reservation_system_pos():
     pass
-    # model = mainmenu.Model()
-    # print_header()
-    # controller: mainmenu.Controller = mainmenu.MainController()
+    model: SeatingStructure = SeatingStructure(fc_rows=NUM_FC_ROWS,
+                                               coach_rows=NUM_COACH_ROWS,
+                                               fc_seats=NUM_FC_SEATS_PER_ROW,
+                                               coach_seats=NUM_COACH_SEATS_PER_ROW)
     # while True:
     #     controller = controller.do(model)
 

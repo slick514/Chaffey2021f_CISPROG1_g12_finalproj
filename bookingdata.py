@@ -5,10 +5,7 @@ from io import StringIO
 
 NEWLINE = os.linesep
 
-NUM_COACH_ROWS: int = 10
-NUM_FC_ROWS: int = 4
-NUM_COACH_SEATS_PER_ROW: int = 4
-NUM_FC_SEATS_PER_ROW: int = 2
+
 MAX_NAME_DISPLAY_LEN: int = 12
 CELL_SEPARATOR: str = "|"
 INNER_CELL_WIDTH: int = MAX_NAME_DISPLAY_LEN + 2
@@ -18,6 +15,55 @@ UNSET_INT = -1
 EMPTY_STR: str = ""
 SPACE: str = " "
 BAR: str = "="
+
+
+class ChangeMaker(enum.Enum):
+    thousands = 100000
+    hundreds = 10000
+    fiftys = 5000
+    twentys = 2000
+    tens = 1000
+    fives = 500
+    dollar = 100
+    quarters = 25
+    dimes = 10
+    nickles = 5
+    pennies = 1
+
+    @classmethod
+    def make_change(cls, amount: float, do_print: bool = False) -> dict:
+
+        amount_left: int = math.floor(amount * 100)
+        data = {}
+        for member in cls:
+            count: int = math.floor(amount_left / member.value)
+            amount_left = amount_left % member.value
+            if count > 0:
+                data[member] = count
+        if do_print:
+            cls.print_change(data)
+        return data
+
+    @classmethod
+    def print_change(cls, amounts: dict):
+        longest_name: int = 0
+        longest_amt: int = 0
+        for amount in amounts.keys():
+            longest_name = len(amount.get_name()) if len(amount.get_name()) > longest_name else longest_name
+            longest_amt = len(str(amounts[amount])) if len(str(amounts[amount])) > longest_amt else longest_amt
+        for member in cls:
+            if member in amounts.keys():
+                name = member.name.capitalize()
+                value = amounts[member]
+                name_buffer: str = SPACE * (longest_name - len(name))
+                val_buffer: str = SPACE * (longest_amt - len(str(value)))
+                print(f'{name_buffer}{member.name.capitalize()}: {val_buffer}{amounts[member]}')
+
+    def get_name(self) -> str:
+        return self.name
+
+    def get_value(self) -> int:
+        return self.value
 
 
 class Passenger:
@@ -45,14 +91,16 @@ class Passenger:
 
     def __set_name(self, name: str):
         self.__validate_passenger_name(name)
-        self.__age = name
+        self.__passenger_name = name
 
     @staticmethod
-    def __validate_passenger_name(name):
+    def __validate_passenger_name(name: str):
         if name == EMPTY_STR:
             raise Exception("Name is unspecified")
-        elif not name.isalnum():
-            raise Exception(f"Name '{name}' contains invalid characters")
+        else:
+            for word in name.split(sep=SPACE):
+                if not word.isalnum():
+                    raise Exception(f"Name '{name}' contains invalid characters")
 
     def get_age(self) -> int:
         return self.__age
@@ -75,6 +123,13 @@ class Passenger:
                 and self.get_age() == other.get_age()
                 and self.get_name() == other.get_name())
 
+    def __repr__(self) -> str:
+        return self.__str__()
+
+    def __str__(self) -> str:
+        output: str = f'Passenger:: Name={self.get_name()}; age={self.get_age()}'
+        return output
+
     def copy(self) -> 'Passenger':
         duplicate: Passenger = Passenger(name=self.get_name(), age=self.get_age())
         return duplicate
@@ -84,19 +139,19 @@ class Passenger:
         try:
             self.__set_name(name=name)
         except Exception as e:
-            errs.join(f'{e}{NEWLINE}')
+            errs += f'{e}{NEWLINE}'
         try:
             self.__set_age(age=age)
         except Exception as e:
-            errs.join(f'{e}{NEWLINE}')
+            errs += f'{e}{NEWLINE}'
         if errs != EMPTY_STR:
             errs = errs.rstrip(errs[-1])
             raise Exception(errs)
 
 
 class Tier(enum.Enum):
-    coach = ["COACH", 19900]
     first_class = ["FIRST CLASS", 50000]
+    coach = ["COACH", 19900]
 
     def get_tier_name(self) -> str:
         return self.value[0]
@@ -185,10 +240,10 @@ class Seat:
 
     def generate_seat_display(self) -> str:
         passenger = self.__get_passenger()
-        name: str = passenger.get_name() if (passenger is not None) else "-OPEN-"
+        name: str = passenger.get_name()[0: MAX_NAME_DISPLAY_LEN] if (passenger is not None) else "-OPEN-"
         gap: float = (MAX_NAME_DISPLAY_LEN - len(name)) / 2
-        front_gap: int = max(1, math.floor(gap))
-        back_gap: int = max(1, math.ceil(gap))
+        front_gap: int = math.floor(gap)
+        back_gap: int = math.ceil(gap)
         data_str = f'{front_gap * SPACE}{name}{back_gap * SPACE}'
         return f'{CELL_SEPARATOR} {data_str} {CELL_SEPARATOR}'
 
@@ -225,7 +280,7 @@ class SeatingStructure:
 
     def set_seat(self, new_seat: Seat):
         self.__validate_seat_existence(new_seat)
-        tier: str = new_seat.get_tier().get_tier_name()
+        tier: Tier = new_seat.get_tier()
         row_number: int = new_seat.get_row_number()
         seat_letter: str = new_seat.get_seat_letter()
         self.__get_structure()[tier][row_number][seat_letter] = new_seat
@@ -244,13 +299,13 @@ class SeatingStructure:
         if row_number not in self.get_row_options(tier):
             range_first = self.get_row_options(tier)[0]
             range_last = self.get_row_options(tier)[-1]
-            errs.join(f"Row number '{tier.get_tier_name()}:{row_number}' does not exist on this flight{NEWLINE}.")
-            errs.join(f"Rows in {tier.get_tier_name()} range from {range_first} to {range_last}{NEWLINE}.")
+            errs += f"Row number '{tier.get_tier_name()}:{row_number}' does not exist on this flight.{NEWLINE}"
+            errs += f"Rows in {tier.get_tier_name()} range from {range_first} to {range_last}.{NEWLINE}"
         if seat_letter not in self.get_seat_options(tier):
             range_first = self.get_seat_options(tier)[0]
             range_last = self.get_seat_options(tier)[-1]
-            errs.join(f"Seat letter '{tier.get_tier_name()}:{seat_letter}' does not exist on this flight{NEWLINE}.")
-            errs.join(f"Seats in {tier.get_tier_name()} range from {range_first} to {range_last}{NEWLINE}.")
+            errs += f"Seat letter '{tier.get_tier_name()}:{seat_letter}' does not exist on this flight.{NEWLINE}"
+            errs += f"Seats in {tier.get_tier_name()} range from {range_first} to {range_last}.{NEWLINE}"
         if errs != EMPTY_STR:
             errs = errs.rstrip(errs[-1])  # strip off newline
             raise Exception(errs)
@@ -258,7 +313,7 @@ class SeatingStructure:
     def get_seat(self, tier: Tier, row_number: int, seat_letter: str) -> Seat:
         return self.__get_structure()[tier][row_number][seat_letter]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.__generate_printout()
 
     def get_row_options(self, tier: Tier) -> list:
@@ -270,8 +325,8 @@ class SeatingStructure:
     def __generate_printout(self) -> str:
         builder: StringIO = StringIO()
         builder.write(f'{self.__generate_top_bar_header()}{NEWLINE}')
-        builder.write(f'{self.__generate_tier_display(Tier.first_class)}{NEWLINE}')
-        builder.write(f'{self.__generate_tier_display(Tier.coach)}{NEWLINE}')
+        for tier in Tier:
+            builder.write(f'{self.__generate_tier_display(tier=tier)}{NEWLINE}')
         builder.write(self.__generate_bottom_line())
         return builder.getvalue()
 
@@ -357,10 +412,3 @@ class SeatingStructure:
             builder.write(self.__generate_bar_header(width=INNER_CELL_WIDTH, text=item))
             builder.write(CELL_SEPARATOR)
         return builder.getvalue()
-
-
-s: SeatingStructure = SeatingStructure(fc_rows=NUM_FC_ROWS,
-                                       coach_rows=NUM_COACH_ROWS,
-                                       fc_seats=NUM_FC_SEATS_PER_ROW,
-                                       coach_seats=NUM_COACH_SEATS_PER_ROW)
-print(s)
