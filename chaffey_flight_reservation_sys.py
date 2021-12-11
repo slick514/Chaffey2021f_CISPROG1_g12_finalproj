@@ -1033,7 +1033,6 @@ class MainController(Controller):
                 print(e)
 
 
-# TODO: Do something
 """
     Rules:
     First-Class basefare is $500
