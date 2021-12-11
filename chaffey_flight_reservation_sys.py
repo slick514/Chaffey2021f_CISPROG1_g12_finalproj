@@ -642,9 +642,10 @@ class QuitController(Controller):
 
 def prompt_user_for_tier() -> Tier:
     while True:
-        print(f"\tWhat is the tier of the seat?")
+        print(f"{linesep}\tWhat is the tier of the seat?")
         for tier in Tier:
-            print(f"\t{tier.get_menu_display_text()}{linesep}\t: ", end=EMPTY_STR)
+            print(f"\t{tier.get_menu_display_text()}")
+        print(f"\t: ", end=EMPTY_STR)
         text = input()
         try:
             check_for_quit_or_return(text)
@@ -746,7 +747,7 @@ def prompt_user_for_seat_letter(tier: Tier, row_number: int, model: SeatingStruc
 
 def prompt_user_for_passenger_name() -> str:
     while True:
-        print(f"\tWhat is the passenger's name?{linesep}\t:", end=EMPTY_STR)
+        print(f"{linesep}\tWhat is the passenger's name?{linesep}\t:", end=EMPTY_STR)
         try:
             name_str: str = input()
             check_for_quit_or_return(name_str)
@@ -771,7 +772,7 @@ def prompt_user_for_passenger_name() -> str:
 
 def print_exiting_guidance():
     print(f"\t{QUIT_GUIDANCE_TEXT}")
-    print(f"\t{RETURN_GUIDANCE_TEXT}{linesep}")
+    print(f"\t{RETURN_GUIDANCE_TEXT}")
 
 
 def prompt_user_for_passenger_age() -> int:
@@ -891,7 +892,7 @@ class NewBookingController(Controller):
             passenger.set_tax_rate(tax_rate)
             handle_money_transfer(seat)
             model.set_seat(seat)
-            print(f"Booked: {seat.get_full_seat_description()}")
+            print(f"{linesep}Booked: {seat.get_full_seat_description()}")
         except NoMoreBookings:
             print("This is a full flight; no more bookings can be made unless there is a cancellation.")
         except ReturnToMainMenu:
