@@ -837,6 +837,9 @@ def prompt_user_for_tax_rate() -> float:
 
 def handle_money_transfer(to_seat: Seat, from_seat: Seat = None):
     owed_cents: int = to_seat.get_price_cents() if from_seat is None else from_seat.compare_cost_cents(to_seat)
+    if owed_cents < 1:
+        print("No money is owed")
+        return
     while True:
         print(f"{linesep}Amount owed is {MoneyManipulator.convert_cents_to_dollar_str(owed_cents)}")
         print(f'\tPlease enter amount paid by customer{linesep}\t:', end=EMPTY_STR)
