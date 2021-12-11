@@ -74,7 +74,6 @@ def run_reservation_system_pos():
 
 
 class MoneyManipulator(Enum):
-    thousands = 100000
     hundreds = 10000
     fifties = 5000
     twenties = 2000
@@ -87,13 +86,12 @@ class MoneyManipulator(Enum):
     pennies = 1
 
     @classmethod
-    def make_change(cls, amount: float, do_print: bool = False) -> dict:
+    def make_change(cls, amount: int, do_print: bool = False) -> dict:
 
-        amount_left: int = floor(amount * 100)
         data = {}
         for member in cls:
-            count: int = floor(amount_left / member.value)
-            amount_left = amount_left % member.value
+            count: int = floor(amount / member.value)
+            amount = amount % member.value
             if count > 0:
                 data[member] = count
         if do_print:
@@ -102,18 +100,22 @@ class MoneyManipulator(Enum):
 
     @classmethod
     def print_change(cls, amounts: dict):
-        longest_name: int = 0
-        longest_amt: int = 0
-        for amount in amounts.keys():
-            longest_name = len(amount.get_name()) if len(amount.get_name()) > longest_name else longest_name
-            longest_amt = len(str(amounts[amount])) if len(str(amounts[amount])) > longest_amt else longest_amt
-        for member in cls:
-            if member in amounts.keys():
-                name = member.name.capitalize()
-                value = amounts[member]
-                name_buffer: str = SPACE * (longest_name - len(name))
-                val_buffer: str = SPACE * (longest_amt - len(str(value)))
-                print(f"{name_buffer}{member.name.capitalize()}: {val_buffer}{amounts[member]}")
+        if len(amounts) == 0:
+            print('No change necessary')
+        else:
+            print("Change Dispensed:")
+            longest_name: int = 0
+            longest_amt: int = 0
+            for amount in amounts.keys():
+                longest_name = len(amount.get_name()) if len(amount.get_name()) > longest_name else longest_name
+                longest_amt = len(str(amounts[amount])) if len(str(amounts[amount])) > longest_amt else longest_amt
+            for member in cls:
+                if member in amounts.keys():
+                    name = member.name.capitalize()
+                    value = amounts[member]
+                    name_buffer: str = SPACE * (longest_name - len(name))
+                    val_buffer: str = SPACE * (longest_amt - len(str(value)))
+                    print(f"\t{name_buffer}{member.name.capitalize()}: {val_buffer}{amounts[member]}")
 
     def get_name(self) -> str:
         return self.name
@@ -123,11 +125,7 @@ class MoneyManipulator(Enum):
 
     @classmethod
     def convert_cents_to_dollar_str(cls, cents: int) -> str:
-        return cls.convert_dollars_to_str(cents / 100)
-
-    @staticmethod
-    def convert_dollars_to_str(dollars: float) -> str:
-        return currency(dollars)
+        return currency(cents / 100)
 
 
 class Passenger:
@@ -186,7 +184,7 @@ class Passenger:
         return self.__str__()
 
     def __str__(self) -> str:
-        output: str = f"Passenger:: Name={self.get_name()}; age={self.get_age()}"
+        output: str = f"Passenger: Name={self.get_name()}; Age={self.get_age()}"
         return output
 
     def copy(self) -> 'Passenger':
@@ -233,7 +231,7 @@ class Tier(Enum):
             raise Exception(f"'{text}' is not one of the available options")
 
     def get_tier_base_cost_cents(self) -> int:
-        return self.value[2]
+        return self.value[1]
 
 
 class Seat:
@@ -249,7 +247,7 @@ class Seat:
         return self.__passenger is not self.NO_PASSENGER
 
     def assign_passenger(self, passenger: Passenger):
-        old_passenger: Passenger = self.__get_passenger()
+        old_passenger: Passenger = self.get_passenger()
         if old_passenger == self.NO_PASSENGER:
             self.__passenger = passenger
         else:
@@ -279,14 +277,15 @@ class Seat:
         return self.get_price_cents() / 100
 
     def get_price_cents(self, passenger=NO_PASSENGER) -> int:
-        passenger = self.__get_passenger() if (passenger == self.NO_PASSENGER) else passenger
+        passenger: Passenger = self.get_passenger() if (passenger is self.NO_PASSENGER) else passenger
         self.__validate_passenger_existance(passenger)
-        validated_passenger: Passenger = passenger
-        tier_price = self.get_tier().get_tier_base_cost_cents()
-        discount_rate = validated_passenger.get_discount_rate()
-        tax_rate = validated_passenger.get_tax_rate()
-        total_price = (tier_price * (1 - discount_rate)) * (1 + tax_rate)
-        return int(total_price)
+        #validated_passenger: Passenger = passenger
+        tier_price: int = self.get_tier().get_tier_base_cost_cents()
+        discount_rate: float = passenger.get_discount_rate()
+        tax_rate: float = passenger.get_tax_rate()
+        passenger.set_tax_rate(tax_rate)
+        total_price: int = floor((tier_price * (1 - discount_rate)) * (1 + tax_rate))
+        return total_price
 
     def __validate_passenger_existance(self, passenger):
         if passenger == self.NO_PASSENGER:
@@ -295,7 +294,7 @@ class Seat:
     def compare_cost_cents(self, to_seat: 'Seat') -> int:
         self.__validate_seat_move_possible(to_seat)
         to_seat = to_seat.copy()
-        to_seat_cost: int = to_seat.get_price_cents(self.__get_passenger())
+        to_seat_cost: int = to_seat.get_price_cents(self.get_passenger())
         return max(0, to_seat_cost - self.get_price_cents())
 
     def __validate_seat_move_possible(self, seat):
@@ -314,11 +313,11 @@ class Seat:
                 and self.get_row_number() == other.__get_number()
                 and self.get_tier() == other.__get_tier())
 
-    def __get_passenger(self) -> Passenger:
+    def get_passenger(self) -> Passenger:
         return self.__passenger
 
     def generate_seat_display(self) -> str:
-        passenger = self.__get_passenger()
+        passenger = self.get_passenger()
         name: str = passenger.get_name()[0: MAX_NAME_DISPLAY_LEN] if (passenger is not None) else "-OPEN-"
         gap: float = (MAX_NAME_DISPLAY_LEN - len(name)) / 2
         front_gap: int = floor(gap)
@@ -326,17 +325,18 @@ class Seat:
         data_str = f"{front_gap * SPACE}{name}{back_gap * SPACE}"
         return f"{CELL_SEPARATOR} {data_str} {CELL_SEPARATOR}"
 
-    def get_seat_description(self) -> str:
-        # Todo:
-        pass
-
-    def get_passenger(self) -> Passenger:
-        # Todo:
-        pass
+    def get_full_seat_description(self) -> str:
+        rtn_str: str = f'Seat: {self.get_row_seat_str()}; '
+        rtn_str += f'Passenger: {self.get_passenger().get_name() if self.is_taken() else "None"}; '
+        rtn_str += f'Cost: {MoneyManipulator.convert_cents_to_dollar_str(self.get_price_cents())}'
+        return rtn_str
 
     def get_row_seat_str(self) -> str:
-        # TODO:
-        pass
+        return f"{self.get_row_number()}-{self.get_seat_letter()}"
+
+
+def make_dict_keys_str(items: dict):
+    return f"({', '.join(map(str, items.keys()))})"
 
 
 class SeatingStructure:
@@ -398,10 +398,7 @@ class SeatingStructure:
     def get_seat(self, tier: Tier, row_number: int, seat_letter: str) -> Seat:
         return self.__get_structure()[tier][row_number][seat_letter]
 
-    def __repr__(self) -> str:
-        return self.__str__()
-
-    def __str__(self) -> str:
+    def generate_chart(self) -> str:
         return self.__generate_printout()
 
     def get_row_options(self, tier: Tier) -> list:
@@ -501,33 +498,114 @@ class SeatingStructure:
             builder.write(CELL_SEPARATOR)
         return builder.getvalue()
 
-    def print_occupied_rows(self, tier: Tier):
-        # TODO:
-        pass
-
-    def print_available_rows(self, tier: Tier):
-        # TODO:
-        pass
-
-    def get_empty_rows(self, tier: Tier):
-        # Todo:
-        pass
-
-    def get_full_rows(self, tier: Tier):
-        # Todo:
-        pass
-
     def print_occupied_seats(self, tier: Tier, row_number: int):
-        # Todo:
-        pass
+        print(
+            f"\tOccupied Seats for {tier.get_tier_name()}: "
+            f"row-{row_number}: {make_dict_keys_str(self.get_occupied_seats(tier=tier, row_number=row_number))}")
 
     def print_available_seats(self, tier: Tier, row_number: int):
-        # Todo:
-        pass
+        print(
+            f"\tAvailable Seats for {tier.get_tier_name()}: row-{row_number}: "
+            f"{make_dict_keys_str(self.get_available_seats(tier=tier, row_number=row_number))}")
 
-    def is_seat_booked(self, tier: Tier, row_number: int, seat_letter: str):
-        # Todo:
-        pass
+    def print_occupied_rows(self, tier: Tier):
+        print(f"\tOccupied Rows for {tier.get_tier_name()}: "
+              f"{make_dict_keys_str(items=self.get_occupied_rows(tier=tier))}")
+
+    def print_available_rows(self, tier: Tier):
+        print(f"\tAvailable Rows for {tier.get_tier_name()}: "
+              f"{make_dict_keys_str(self.get_available_rows(tier=tier))}")
+
+    def is_seat_booked(self, tier: Tier, row_number: int, seat_letter: str) -> bool:
+        return self.__get_structure()[tier][row_number][seat_letter].is_taken()
+
+    def get_occupied_seats(self, tier: Tier, row_number) -> dict:
+        rtn_dict: dict = {}
+        seat_keys: list = self.__get_structure()[tier][row_number].keys()
+        seats: dict = self.__get_structure()[tier][row_number]
+        for seat_key in seat_keys:
+            seat: Seat = seats[seat_key]
+            if seat.is_taken():
+                rtn_dict[seat_key] = seat
+        return rtn_dict
+
+    def get_available_seats(self, tier: Tier, row_number) -> dict:
+        rtn_dict: dict = {}
+        seat_keys: list = self.__get_structure()[tier][row_number].keys()
+        seats: dict = self.__get_structure()[tier][row_number]
+        for seat_key in seat_keys:
+            seat: Seat = seats[seat_key]
+            if not seat.is_taken():
+                rtn_dict[seat_key] = seat
+        return rtn_dict
+
+    def get_occupied_rows(self, tier) -> dict:
+        rtn_dict: dict = {}
+        row_keys: list = self.__get_structure()[tier].keys()
+        rows: dict = self.__get_structure()[tier]
+        for row_key in row_keys:
+            occupied: bool = False
+            seat_keys: list = rows[row_key].keys()
+            row: dict = rows[row_key]
+            for seat_key in seat_keys:
+                seat: Seat = row[seat_key]
+                if seat.is_taken():
+                    occupied = True
+                    break
+            if occupied:
+                rtn_dict[row_key] = rows[row_key]
+        return rtn_dict
+
+    def get_available_rows(self, tier) -> dict:
+        rtn_dict: dict = {}
+        row_keys: list = self.__get_structure()[tier].keys()
+        rows: dict = self.__get_structure()[tier]
+        for row_key in row_keys:
+            available: bool = False
+            seat_keys: list = rows[row_key].keys()
+            row: dict = rows[row_key]
+            for seat_key in seat_keys:
+                seat: Seat = row[seat_key]
+                if not seat.is_taken():
+                    available = True
+                    break
+            if available:
+                rtn_dict[row_key] = rows[row_key]
+        return rtn_dict
+
+    def get_full_rows(self, tier: Tier) -> dict:
+        rtn_dict: dict = {}
+        row_keys: list = self.__get_structure()[tier].keys()
+        rows: dict = self.__get_structure()[tier]
+        for row_key in row_keys:
+            full: bool = True
+            seat_keys: list = rows[row_key].keys()
+            row: dict = rows[row_key]
+            for seat_key in seat_keys:
+                seat: Seat = row[seat_key]
+                if not seat.is_taken():
+                    full = False
+                    break
+            if full:
+                rtn_dict[row_key] = rows[row_key]
+        return rtn_dict
+
+    def get_empty_rows(self, tier: Tier) -> dict:
+        rtn_dict: dict = {}
+        row_keys: list = self.__get_structure()[tier].keys()
+        rows: dict = self.__get_structure()[tier]
+        for row_key in row_keys:
+            empty: bool = True
+            seat_keys: list = rows[row_key].keys()
+            row: dict = rows[row_key]
+            for seat_key in seat_keys:
+                seat: Seat = row[seat_key]
+                if seat.is_taken():
+                    empty = False
+                    break
+            if empty:
+                rtn_dict[row_key] = rows[row_key]
+        return rtn_dict
 
 
 class Controller(metaclass=ABCMeta):
@@ -592,12 +670,12 @@ def prompt_user_for_row_number(tier: Tier, model: SeatingStructure, change_booki
                     raise Exception(f"Row {row} in {tier.get_tier_name()} is full for this flight.")
             print(f"Row {row} in {tier.get_tier_name()} has been selected{linesep}")
             return row
-        except ValueError:
-            print(f'Entry "{row_str}" could not be evaluated as an integer.')
         except QuitApplication:
             raise QuitApplication
         except ReturnToMainMenu:
             raise ReturnToMainMenu
+        except ValueError:
+            print(f'Entry "{row_str}" could not be evaluated as an integer.')
         except Exception as e:
             print(e)
 
@@ -621,7 +699,7 @@ def prompt_user_for_seat_letter(tier: Tier, row_number: int, model: SeatingStruc
             check_for_quit_or_return(seat_str)
             if seat_str == EMPTY_STR:
                 raise Exception("No entry detected")
-            if seat_str in model.get_seat_options(tier=tier):
+            if seat_str not in model.get_seat_options(tier=tier):
                 raise_invalid_option_exception(seat_str)
             if change_booking:
                 if not model.is_seat_booked(tier=tier, row_number=row_number, seat_letter=seat_str):
@@ -682,12 +760,12 @@ def prompt_user_for_passenger_age() -> int:
             if age < MIN_AGE or age > MAX_AGE:
                 raise Exception(f"Age '{age} is not within valid bounds ({MIN_AGE} to {MAX_AGE})")
             return age
-        except ValueError:
-            print(f'Entry "{age_str}" could not be evaluated as an integer.')
         except QuitApplication:
             raise QuitApplication
         except ReturnToMainMenu:
             raise ReturnToMainMenu
+        except ValueError:
+            print(f'Entry "{age_str}" could not be evaluated as an integer.')
         except Exception as e:
             print(e)
 
@@ -711,13 +789,55 @@ def obtain_seat_from_attendant(model: SeatingStructure, change_booking: bool) ->
 
 
 def prompt_user_for_tax_rate() -> float:
-    # Todo:
-    pass
+    while True:
+        print(f'{linesep}\tPlease enter the tax rate for this transaction.')
+        rate_str = input(f'\tRates are entered in decimal form. ("0.8" = 8.0%){linesep}\t:')
+        try:
+            check_for_quit_or_return(rate_str)
+            rate_f: float = float(rate_str)
+            r: int = floor(rate_f * 1000)
+            rate_f: float = r / 1000
+            rate_str = f'{rate_f * 100}%'
+            print(f"Rate Entered is {rate_str}")
+            return rate_f
+        except ReturnToMainMenu:
+            raise ReturnToMainMenu()
+        except QuitApplication:
+            raise QuitApplication()
+        except ():
+            print(f'Value ({rate_str}) is not interpretable as a tax-rate')
+            print(f'Please only enter numerical values, and a decimal place if appropriate')
+        except Exception as e:
+            print(e)
 
 
 def handle_money_transfer(to_seat: Seat, from_seat: Seat = None):
-    # Todo:
-    pass
+    owed_cents: int = to_seat.get_price_cents() if from_seat is None else from_seat.compare_cost_cents(to_seat)
+    while True:
+        print(f"Amount owed is {MoneyManipulator.convert_cents_to_dollar_str(owed_cents)}")
+        print(f'\tPlease enter amount paid by customer{linesep}\t:')
+        amt_str = input()
+        try:
+            check_for_quit_or_return(amt_str)
+            amt: float = float(amt_str)
+            amt_cents: int = floor(amt * 100)
+            diff = amt_cents - owed_cents
+            if diff < 0:
+                owed_str: str = MoneyManipulator.convert_cents_to_dollar_str(abs(diff))
+                owed_cents -= amt_cents
+                raise Exception(f"{owed_str} is insufficient to cover the cost of this booking")
+            else:
+                MoneyManipulator.make_change(amount=diff, do_print=True)
+                break
+        except ReturnToMainMenu:
+            raise ReturnToMainMenu()
+        except QuitApplication:
+            raise QuitApplication()
+        except ValueError:
+            print(f'Value ({amt_str}) could not be converted to a dollar amount')
+            print(f'Please only enter numerical values, and a decimal place if appropriate')
+        except Exception as e:
+            print(e)
 
 
 class NewBookingController(Controller):
@@ -733,7 +853,7 @@ class NewBookingController(Controller):
             passenger.set_tax_rate(tax_rate)
             handle_money_transfer(seat)
             model.set_seat(seat)
-            print(f"Booked: {seat.get_seat_description()}{linesep}")
+            print(f"Booked: {seat.get_full_seat_description()}{linesep}")
         except ReturnToMainMenu:
             pass
         except QuitApplication:
@@ -776,7 +896,7 @@ class ChangeBookingController(Controller):
 class PrintBookingController(Controller):
     def do(self, model: SeatingStructure) -> Controller:
         print("\tBookings Chart:")
-        print(f"{linesep}{model}{linesep}")
+        print(f"{linesep}{model.generate_chart()}{linesep}")
         return MainController()
 
 
