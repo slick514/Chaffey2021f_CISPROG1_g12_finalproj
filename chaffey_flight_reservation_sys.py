@@ -335,7 +335,7 @@ class Seat:
         return rtn_str
 
     def get_row_seat_str(self) -> str:
-        return f"{self.get_row_number()}-{self.get_seat_letter()}"
+        return f"'{self.get_tier().get_tier_name()}'-{self.get_row_number()}-{self.get_seat_letter()}"
 
 
 def make_dict_keys_str(items: dict):
@@ -921,7 +921,7 @@ class DeleteBookingController(Controller):
             seat_letter: str = seat.get_seat_letter()
             seat = model.get_seat(tier=tier, row_number=row_number, seat_letter=seat_letter)
             seat.remove_passenger()
-            print(f'Seat {seat.get_row_seat_str()} booking removed')
+            print(f'{seat.get_row_seat_str()} booking removed')
         except NoBookingsExist:
             print("There are no bookings to delete.")
         except ReturnToMainMenu:
