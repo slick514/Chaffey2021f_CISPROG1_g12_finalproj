@@ -279,7 +279,7 @@ class Seat:
     def get_price_cents(self, passenger=NO_PASSENGER) -> int:
         passenger: Passenger = self.get_passenger() if (passenger is self.NO_PASSENGER) else passenger
         self.__validate_passenger_existance(passenger)
-        #validated_passenger: Passenger = passenger
+        # validated_passenger: Passenger = passenger
         tier_price: int = self.get_tier().get_tier_base_cost_cents()
         discount_rate: float = passenger.get_discount_rate()
         tax_rate: float = passenger.get_tax_rate()
@@ -344,7 +344,6 @@ class SeatingStructure:
     UNICODE_BASE: int = 65
     OPEN_SEAT_NAME: str = "OPEN"
     PRINT_HEADER_TEXT: str = "SEATING ASSIGNMENTS"
-    CELL_SEPARATOR: str = "|"
     INNER_CELL_WIDTH: int = MAX_NAME_DISPLAY_LEN + 2
     OUTER_CELL_WIDTH: int = INNER_CELL_WIDTH + 2 * len(CELL_SEPARATOR)
 
@@ -499,14 +498,12 @@ class SeatingStructure:
         return builder.getvalue()
 
     def print_occupied_seats(self, tier: Tier, row_number: int):
-        print(
-            f"\tOccupied Seats for {tier.get_tier_name()}: "
-            f"row-{row_number}: {make_dict_keys_str(self.get_occupied_seats(tier=tier, row_number=row_number))}")
+        print(f"\tOccupied Seats for {tier.get_tier_name()}: "
+              f"row-{row_number}: {make_dict_keys_str(self.get_occupied_seats(tier=tier, row_number=row_number))}")
 
     def print_available_seats(self, tier: Tier, row_number: int):
-        print(
-            f"\tAvailable Seats for {tier.get_tier_name()}: row-{row_number}: "
-            f"{make_dict_keys_str(self.get_available_seats(tier=tier, row_number=row_number))}")
+        print(f"\tAvailable Seats for {tier.get_tier_name()}: row-{row_number}: "
+              f"{make_dict_keys_str(self.get_available_seats(tier=tier, row_number=row_number))}")
 
     def print_occupied_rows(self, tier: Tier):
         print(f"\tOccupied Rows for {tier.get_tier_name()}: "
@@ -607,6 +604,22 @@ class SeatingStructure:
                 rtn_dict[row_key] = rows[row_key]
         return rtn_dict
 
+    def is_full(self):
+        full: bool = True
+        for tier in Tier:
+            if len(self.get_available_rows(tier=tier)) > 0:
+                full = False
+                break
+        return full
+
+    def is_empty(self):
+        empty: bool = True
+        for tier in Tier:
+            if len(self.get_occupied_rows(tier=tier)) > 0:
+                empty = False
+                break
+        return empty
+
 
 class Controller(metaclass=ABCMeta):
 
@@ -650,6 +663,12 @@ class ReturnToMainMenu(Exception):
 class QuitApplication(Exception):
     pass
 
+
+class NoMoreBookings(Exception):
+    pass
+
+class NoBookingsExist(Exception):
+    pass
 
 def prompt_user_for_row_number(tier: Tier, model: SeatingStructure, change_booking: bool) -> int:
     while True:
@@ -840,12 +859,22 @@ def handle_money_transfer(to_seat: Seat, from_seat: Seat = None):
             print(e)
 
 
+def check_model_full(model: SeatingStructure):
+    if model.is_full():
+        raise NoMoreBookings()
+
+def check_model_empty(model: SeatingStructure):
+    if model.is_empty():
+        raise NoBookingsExist()
+
+
 class NewBookingController(Controller):
 
     def do(self, model: SeatingStructure) -> Controller:
-        print("Create A New Booking:")
-        print_exiting_guidance()
         try:
+            check_model_full(model)
+            print(f"{linesep}Create A New Booking:")
+            print_exiting_guidance()
             seat: Seat = obtain_seat_from_attendant(model=model, change_booking=False)
             passenger: Passenger = obtain_passenger_from_attendant()
             seat.assign_passenger(passenger)
@@ -854,6 +883,8 @@ class NewBookingController(Controller):
             handle_money_transfer(seat)
             model.set_seat(seat)
             print(f"Booked: {seat.get_full_seat_description()}{linesep}")
+        except NoMoreBookings:
+            print("This is a full flight; no more bookings can be made unless there is a cancellation.")
         except ReturnToMainMenu:
             pass
         except QuitApplication:
@@ -868,12 +899,33 @@ def move_passenger(to_seat: Seat, from_seat: Seat, model: SeatingStructure):
     model.set_seat(from_seat)
 
 
+class DeleteBookingController(Controller):
+
+    def do(self, model: SeatingStructure) -> Controller:
+        print(f"{linesep}Delete An Existing Booking:")
+        print_exiting_guidance()
+        try:
+            check_model_empty(model=model)
+            seat: Seat = obtain_seat_from_attendant(model=model, change_booking=True)
+            seat.remove_passenger()
+            print(f'Seat {seat.get_row_seat_str()} booking removed')
+        except NoBookingsExist:
+            print("There are no bookings to delete.")
+        except ReturnToMainMenu:
+            pass
+        except QuitApplication:
+            return QuitController()
+        return MainController()
+
+
 class ChangeBookingController(Controller):
 
     def do(self, model: SeatingStructure) -> Controller:
-        print("Change An Existing Booking:")
+        print(f"{linesep}Change An Existing Booking:")
         print_exiting_guidance()
         try:
+            check_model_full(model)
+            check_model_empty(model)
             from_seat: Seat = obtain_seat_from_attendant(model=model, change_booking=True)
             to_seat: Seat = obtain_seat_from_attendant(model=model, change_booking=False)
             diff: int = from_seat.compare_cost_cents(to_seat=to_seat)
@@ -886,6 +938,10 @@ class ChangeBookingController(Controller):
                 print(f' at no charge."')
             else:
                 print(f" for an additional cost of {MoneyManipulator.convert_cents_to_dollar_str(diff)}")
+        except NoMoreBookings:
+            print("This is a full flight; There are no seats to move to.")
+        except NoBookingsExist:
+            print("No bookings exist to change.")
         except ReturnToMainMenu:
             pass
         except QuitApplication:
@@ -895,8 +951,8 @@ class ChangeBookingController(Controller):
 
 class PrintBookingController(Controller):
     def do(self, model: SeatingStructure) -> Controller:
-        print("\tBookings Chart:")
-        print(f"{linesep}{model.generate_chart()}{linesep}")
+        print(f"{linesep}\tBookings Chart:")
+        print(f"{linesep}{model.generate_chart()}")
         return MainController()
 
 
@@ -907,6 +963,7 @@ def raise_invalid_option_exception(text: str):
 class MainMenuChoices(Enum):
     new_booking = ["(N)ew Booking", 'N', NewBookingController]
     change_booking = ["(C)hange Booking", 'C', ChangeBookingController]
+    delete_booking = ["(D)elete Booking", 'D', DeleteBookingController]
     print_bookings = ["(P)rint Bookings Chart", 'P', PrintBookingController]
     quit = ["(Q)uit", 'Q', QuitController]
 
@@ -932,7 +989,7 @@ class MainController(Controller):
         super().__init__()
 
     def do(self, model: SeatingStructure) -> Controller:
-        print(f"Main Menu")
+        print(f"{linesep}Main Menu")
         return self.prompt_for_choice()
 
     @staticmethod
