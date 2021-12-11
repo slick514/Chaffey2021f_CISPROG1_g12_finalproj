@@ -913,6 +913,10 @@ class DeleteBookingController(Controller):
         try:
             check_model_empty(model=model)
             seat: Seat = obtain_seat_from_attendant(model=model, change_booking=True)
+            tier: Tier = seat.get_tier()
+            row_number: int = seat.get_row_number()
+            seat_letter: str = seat.get_seat_letter()
+            seat = model.get_seat(tier=tier, row_number=row_number, seat_letter=seat_letter)
             seat.remove_passenger()
             print(f'Seat {seat.get_row_seat_str()} booking removed')
         except NoBookingsExist:
