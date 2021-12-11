@@ -687,6 +687,8 @@ def prompt_user_for_row_number(tier: Tier, model: SeatingStructure, change_booki
         try:
             check_for_quit_or_return(row_str)
             row: int = int(row_str)
+            if row not in model.get_row_options(tier=tier):
+                raise Exception(f"{linesep}Row '{row}' is not a valid option")
             if change_booking:
                 if row in model.get_empty_rows(tier):
                     raise Exception(f"No seats have been booked yet for row {row} in {tier.get_tier_name()} ")
