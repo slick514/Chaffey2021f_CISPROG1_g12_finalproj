@@ -851,9 +851,9 @@ def handle_money_transfer(to_seat: Seat, from_seat: Seat = None):
             amt_cents: int = floor(amt * 100)
             diff = amt_cents - owed_cents
             if diff < 0:
-                owed_str: str = MoneyManipulator.convert_cents_to_dollar_str(abs(diff))
+                owed_str: str = MoneyManipulator.convert_cents_to_dollar_str(amt_cents)
                 owed_cents -= amt_cents
-                raise Exception(f"{MoneyManipulator.convert_cents_to_dollar_str(amt_cents)} is insufficient to cover the cost of this booking")
+                raise Exception(f"{owed_str} is insufficient to cover the cost of this booking")
             else:
                 MoneyManipulator.make_change(amount_cents=diff, do_print=True)
                 break
@@ -952,7 +952,8 @@ class ChangeBookingController(Controller):
             handle_money_transfer(to_seat=to_seat, from_seat=from_seat)
             move_passenger(from_seat=from_seat, model=model, to_seat=to_seat)
             print(f'Passenger "{to_seat.get_passenger().get_name()}" '
-                  f'moved from {from_seat.get_tier_row_seat_str()} to {to_seat.get_tier_row_seat_str()} ', end=EMPTY_STR)
+                  f'moved from {from_seat.get_tier_row_seat_str()} '
+                  f'to {to_seat.get_tier_row_seat_str()} ', end=EMPTY_STR)
 
             if diff == 0:
                 print(f' at no charge."')
@@ -1030,6 +1031,7 @@ class MainController(Controller):
                 print(e)
 
 
+# TODO: Do something
 """
     Rules:
     First-Class basefare is $500
