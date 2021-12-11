@@ -329,12 +329,12 @@ class Seat:
         return f"{CELL_SEPARATOR} {data_str} {CELL_SEPARATOR}"
 
     def get_full_seat_description(self) -> str:
-        rtn_str: str = f'Seat: {self.get_row_seat_str()}; '
+        rtn_str: str = f'Seat: {self.get_tier_row_seat_str()}; '
         rtn_str += f'Passenger: {self.get_passenger().get_name() if self.is_taken() else "None"}; '
         rtn_str += f'Cost: {MoneyManipulator.convert_cents_to_dollar_str(self.get_price_cents())}'
         return rtn_str
 
-    def get_row_seat_str(self) -> str:
+    def get_tier_row_seat_str(self) -> str:
         return f"'{self.get_tier().get_tier_name()}'-{self.get_row_number()}-{self.get_seat_letter()}"
 
 
@@ -808,7 +808,7 @@ def obtain_seat_from_attendant(model: SeatingStructure, change_booking: bool) ->
     seat_letter = prompt_user_for_seat_letter(tier=tier, row_number=row_number, model=model,
                                               change_booking=change_booking)
     seat: Seat = Seat(tier=tier, row_number=row_number, seat_letter=seat_letter)
-    print(f"{tier.get_tier_name()} seat {row_number}-{seat_letter} has been selected")
+    print(f"{seat.get_tier_row_seat_str()} has been selected")
     return seat
 
 
@@ -921,7 +921,7 @@ class DeleteBookingController(Controller):
             seat_letter: str = seat.get_seat_letter()
             seat = model.get_seat(tier=tier, row_number=row_number, seat_letter=seat_letter)
             seat.remove_passenger()
-            print(f'{seat.get_row_seat_str()} booking removed')
+            print(f'{seat.get_tier_row_seat_str()} booking removed')
         except NoBookingsExist:
             print("There are no bookings to delete.")
         except ReturnToMainMenu:
@@ -951,7 +951,7 @@ class ChangeBookingController(Controller):
             handle_money_transfer(to_seat=to_seat, from_seat=from_seat)
             move_passenger(from_seat=from_seat, model=model, to_seat=to_seat)
             print(f'Passenger "{to_seat.get_passenger().get_name()}" '
-                  f'moved from {from_seat.get_row_seat_str()} to {to_seat.get_row_seat_str()} ', end=EMPTY_STR)
+                  f'moved from {from_seat.get_tier_row_seat_str()} to {to_seat.get_tier_row_seat_str()} ', end=EMPTY_STR)
 
             if diff == 0:
                 print(f' at no charge."')
