@@ -644,8 +644,8 @@ def prompt_user_for_tier() -> Tier:
     while True:
         print(f"\tWhat is the tier of the seat?")
         for tier in Tier:
-            print(f"\t{tier.get_menu_display_text()}")
-        text = input("\t:")
+            print(f"\t{tier.get_menu_display_text()}{linesep}\t: ", end=EMPTY_STR)
+        text = input()
         try:
             check_for_quit_or_return(text)
             tier = Tier.get_tier(text)
@@ -815,7 +815,7 @@ def obtain_seat_from_attendant(model: SeatingStructure, change_booking: bool) ->
 def prompt_user_for_tax_rate() -> float:
     while True:
         print(f'{linesep}\tPlease enter the tax rate for this transaction.')
-        rate_str = input(f'\tRates are entered in decimal form. ("0.8" = 8.0%){linesep}\t:')
+        rate_str = input(f'\tRates are entered in decimal form. ("0.8" = 8.0%){linesep}\t: ')
         try:
             check_for_quit_or_return(rate_str)
             rate_f: float = float(rate_str)
@@ -1020,7 +1020,8 @@ class MainController(Controller):
             print(f"\tOptions:")
             for member in MainMenuChoices:
                 print(f"\t{member.get_menu_text()}")
-            text: str = input("\t: ")
+            print(f'\t: ', end=EMPTY_STR)
+            text: str = input()
             try:
                 choice = MainMenuChoices.get_by_letter(text=text)
                 return choice.get_controller()
