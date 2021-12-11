@@ -28,7 +28,7 @@ setlocale(LC_ALL, SYSTEM_LOCALE)
 
 WELCOME_TEXT = "Hello! Welcome to Chaffey Airlines!"
 INFO_TEXT = "Our Cool Project v1.0, by Justin Gries & Christian Flores"
-WELCOME_HEADER_LENGTH = 80
+WELCOME_HEADER_LENGTH = 68
 NUM_COACH_ROWS: int = 10
 NUM_FC_ROWS: int = 4
 NUM_COACH_SEATS_PER_ROW: int = 4
@@ -86,23 +86,25 @@ class MoneyManipulator(Enum):
     pennies = 1
 
     @classmethod
-    def make_change(cls, amount: int, do_print: bool = False) -> dict:
-
+    def make_change(cls, amount_cents: int, do_print: bool = False) -> dict:
+        original_amt: int = amount_cents
         data = {}
         for member in cls:
-            count: int = floor(amount / member.value)
-            amount = amount % member.value
+            count: int = floor(amount_cents / member.value)
+            amount_cents = amount_cents % member.value
             if count > 0:
                 data[member] = count
         if do_print:
-            cls.print_change(data)
+            cls.print_change(data, original_amount_cents=original_amt)
         return data
 
     @classmethod
-    def print_change(cls, amounts: dict):
+    def print_change(cls, amounts: dict, original_amount_cents: int = 0):
         if len(amounts) == 0:
             print('No change necessary')
         else:
+            if original_amount_cents > 0:
+                print(f"Amount Returned: {cls.convert_cents_to_dollar_str(original_amount_cents)}")
             print("Change Dispensed:")
             longest_name: int = 0
             longest_amt: int = 0
@@ -297,14 +299,15 @@ class Seat:
         to_seat_cost: int = to_seat.get_price_cents(self.get_passenger())
         return max(0, to_seat_cost - self.get_price_cents())
 
-    def __validate_seat_move_possible(self, seat):
-        if seat.is_taken():
+    def __validate_seat_move_possible(self, to_seat: 'Seat'):
+        if to_seat.is_taken():
             raise Exception("That seat is already taken")
         if not self.is_taken():
-            raise Exception("Unable to compare seat cost without a passenger")
+            raise Exception("This seat is not presently booked")
 
     def copy(self) -> 'Seat':
         seat: Seat = Seat(row_number=self.get_row_number(), seat_letter=self.get_seat_letter(), tier=self.get_tier())
+        seat.assign_passenger(self.get_passenger())
         return seat
 
     def __eq__(self, other) -> bool:
@@ -639,7 +642,7 @@ class QuitController(Controller):
 
 def prompt_user_for_tier() -> Tier:
     while True:
-        print(f"\tWhat tier would you like?")
+        print(f"\tWhat is the tier of the seat?")
         for tier in Tier:
             print(f"\t{tier.get_menu_display_text()}")
         text = input("\t:")
@@ -667,8 +670,10 @@ class QuitApplication(Exception):
 class NoMoreBookings(Exception):
     pass
 
+
 class NoBookingsExist(Exception):
     pass
+
 
 def prompt_user_for_row_number(tier: Tier, model: SeatingStructure, change_booking: bool) -> int:
     while True:
@@ -793,7 +798,7 @@ def obtain_passenger_from_attendant() -> Passenger:
     name: str = prompt_user_for_passenger_name()
     age: int = prompt_user_for_passenger_age()
     passenger: Passenger = Passenger(name=name, age=age)
-    print(f'Passenger "{passenger}" (age {age}) has been created{linesep}')
+    print(f'Passenger "{passenger}" (age {age}) has been created')
     return passenger
 
 
@@ -803,7 +808,7 @@ def obtain_seat_from_attendant(model: SeatingStructure, change_booking: bool) ->
     seat_letter = prompt_user_for_seat_letter(tier=tier, row_number=row_number, model=model,
                                               change_booking=change_booking)
     seat: Seat = Seat(tier=tier, row_number=row_number, seat_letter=seat_letter)
-    print(f"{tier.get_tier_name()} seat {row_number}-{seat_letter} has been selected{linesep}")
+    print(f"{tier.get_tier_name()} seat {row_number}-{seat_letter} has been selected")
     return seat
 
 
@@ -833,8 +838,8 @@ def prompt_user_for_tax_rate() -> float:
 def handle_money_transfer(to_seat: Seat, from_seat: Seat = None):
     owed_cents: int = to_seat.get_price_cents() if from_seat is None else from_seat.compare_cost_cents(to_seat)
     while True:
-        print(f"Amount owed is {MoneyManipulator.convert_cents_to_dollar_str(owed_cents)}")
-        print(f'\tPlease enter amount paid by customer{linesep}\t:')
+        print(f"{linesep}Amount owed is {MoneyManipulator.convert_cents_to_dollar_str(owed_cents)}")
+        print(f'\tPlease enter amount paid by customer{linesep}\t:', end=EMPTY_STR)
         amt_str = input()
         try:
             check_for_quit_or_return(amt_str)
@@ -846,7 +851,7 @@ def handle_money_transfer(to_seat: Seat, from_seat: Seat = None):
                 owed_cents -= amt_cents
                 raise Exception(f"{owed_str} is insufficient to cover the cost of this booking")
             else:
-                MoneyManipulator.make_change(amount=diff, do_print=True)
+                MoneyManipulator.make_change(amount_cents=diff, do_print=True)
                 break
         except ReturnToMainMenu:
             raise ReturnToMainMenu()
@@ -862,6 +867,7 @@ def handle_money_transfer(to_seat: Seat, from_seat: Seat = None):
 def check_model_full(model: SeatingStructure):
     if model.is_full():
         raise NoMoreBookings()
+
 
 def check_model_empty(model: SeatingStructure):
     if model.is_empty():
@@ -882,7 +888,7 @@ class NewBookingController(Controller):
             passenger.set_tax_rate(tax_rate)
             handle_money_transfer(seat)
             model.set_seat(seat)
-            print(f"Booked: {seat.get_full_seat_description()}{linesep}")
+            print(f"Booked: {seat.get_full_seat_description()}")
         except NoMoreBookings:
             print("This is a full flight; no more bookings can be made unless there is a cancellation.")
         except ReturnToMainMenu:
@@ -926,8 +932,14 @@ class ChangeBookingController(Controller):
         try:
             check_model_full(model)
             check_model_empty(model)
+            print("Please provide the information for the existing booking:")
             from_seat: Seat = obtain_seat_from_attendant(model=model, change_booking=True)
+            print("Please provide the information that for the seat that is desired:")
             to_seat: Seat = obtain_seat_from_attendant(model=model, change_booking=False)
+            row_number: int = from_seat.get_row_number()
+            seat_letter: str = from_seat.get_seat_letter()
+            tier: Tier = from_seat.get_tier()
+            from_seat = model.get_seat(row_number=row_number, seat_letter=seat_letter, tier=tier)
             diff: int = from_seat.compare_cost_cents(to_seat=to_seat)
             handle_money_transfer(to_seat=to_seat, from_seat=from_seat)
             move_passenger(from_seat=from_seat, model=model, to_seat=to_seat)
@@ -946,6 +958,8 @@ class ChangeBookingController(Controller):
             pass
         except QuitApplication:
             return QuitController()
+        except Exception as e:
+            print(e)
         return MainController()
 
 
