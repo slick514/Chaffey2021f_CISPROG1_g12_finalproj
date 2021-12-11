@@ -852,7 +852,7 @@ def handle_money_transfer(to_seat: Seat, from_seat: Seat = None):
             if diff < 0:
                 owed_str: str = MoneyManipulator.convert_cents_to_dollar_str(abs(diff))
                 owed_cents -= amt_cents
-                raise Exception(f"{owed_str} is insufficient to cover the cost of this booking")
+                raise Exception(f"{MoneyManipulator.convert_cents_to_dollar_str(amt_cents)} is insufficient to cover the cost of this booking")
             else:
                 MoneyManipulator.make_change(amount_cents=diff, do_print=True)
                 break
@@ -1028,7 +1028,7 @@ class MainController(Controller):
                 print(e)
 
 
-'''
+"""
     Rules:
     First-Class basefare is $500
     Coach base fare is $199
@@ -1132,4 +1132,5 @@ class MainController(Controller):
             
             If "Quit":
                 Quit
-'''
+
+"""
